@@ -21,6 +21,10 @@ const ReviewSchema = new mongoose.Schema(
     // optional for admin-added photo-only testimonials (no written quote).
     text: { type: String, default: '' },
     photoUrl: { type: String, default: '' }, // optional
+    // Optional override for the date shown on the public site - lets admins
+    // backdate imported testimonials to their real original date instead of
+    // the moment they were entered. Falls back to createdAt when unset.
+    reviewDate: { type: Date },
     approved: { type: Boolean, default: true },
     featured: { type: Boolean, default: false }, // shown first in the Home page review list
   },

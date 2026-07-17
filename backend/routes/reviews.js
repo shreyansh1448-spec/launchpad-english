@@ -32,7 +32,7 @@ router.get('/admin/all', requireAdmin, async (req, res) => {
 // body: { courseSlug, name, role, stars, text, photoUrl, approved, featured }
 router.post('/admin', requireAdmin, async (req, res) => {
   try {
-    const { courseSlug, name, role, stars, text, photoUrl, approved, featured } = req.body;
+    const { courseSlug, name, role, stars, text, photoUrl, approved, featured, reviewDate } = req.body;
     if (!courseSlug || !name || !stars) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -50,6 +50,7 @@ router.post('/admin', requireAdmin, async (req, res) => {
       photoUrl: photoUrl || '',
       approved: approved === undefined ? true : !!approved,
       featured: !!featured,
+      reviewDate: reviewDate || undefined,
     });
     res.status(201).json(review);
   } catch (err) {
@@ -67,6 +68,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
     if ('name' in req.body) update.name = req.body.name;
     if ('role' in req.body) update.role = req.body.role;
     if ('text' in req.body) update.text = req.body.text;
+    if ('reviewDate' in req.body) update.reviewDate = req.body.reviewDate || null;
     if ('stars' in req.body) {
       const stars = Number(req.body.stars);
       if (stars < 1 || stars > 5) return res.status(400).json({ error: 'Stars must be between 1 and 5' });

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api.js';
 
-const NEW_REVIEW_DEFAULT = { courseSlug: '', name: '', role: '', stars: 5, text: '' };
+const NEW_REVIEW_DEFAULT = { courseSlug: '', name: '', role: '', stars: 5, text: '', reviewDate: '' };
 
 export default function AdminReviews() {
   const [reviews, setReviews] = useState([]);
@@ -9,7 +9,7 @@ export default function AdminReviews() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({ name: '', role: '', stars: 5, text: '' });
+  const [editForm, setEditForm] = useState({ name: '', role: '', stars: 5, text: '', reviewDate: '' });
 
   const [newReview, setNewReview] = useState(NEW_REVIEW_DEFAULT);
   const [creating, setCreating] = useState(false);
@@ -85,7 +85,14 @@ export default function AdminReviews() {
 
   function startEdit(review) {
     setEditingId(review._id);
-    setEditForm({ name: review.name, role: review.role, stars: review.stars, text: review.text });
+    const date = review.reviewDate || review.createdAt;
+    setEditForm({
+      name: review.name,
+      role: review.role,
+      stars: review.stars,
+      text: review.text,
+      reviewDate: date ? date.slice(0, 10) : '',
+    });
   }
 
   async function saveEdit(id) {
@@ -155,6 +162,14 @@ export default function AdminReviews() {
           value={newReview.text}
           onChange={(e) => setNewReview({ ...newReview, text: e.target.value })}
         />
+        <input
+          className="form-control"
+          type="date"
+          style={{ width: 160 }}
+          title="Date shown on the public site (leave blank to use today's date)"
+          value={newReview.reviewDate}
+          onChange={(e) => setNewReview({ ...newReview, reviewDate: e.target.value })}
+        />
         <button className="btn btn-sm" type="submit" disabled={creating}>
           {creating ? 'Adding…' : 'Add review'}
         </button>
@@ -172,6 +187,7 @@ export default function AdminReviews() {
               <th>Course</th>
               <th>Stars</th>
               <th>Review</th>
+              <th>Date</th>
               <th>Approved</th>
               <th>Featured</th>
               <th></th>
@@ -215,6 +231,15 @@ export default function AdminReviews() {
                       onChange={(e) => setEditForm({ ...editForm, text: e.target.value })}
                     />
                   </td>
+                  <td>
+                    <input
+                      className="form-control"
+                      type="date"
+                      style={{ width: 140 }}
+                      value={editForm.reviewDate}
+                      onChange={(e) => setEditForm({ ...editForm, reviewDate: e.target.value })}
+                    />
+                  </td>
                   <td>{r.approved ? '✓' : '—'}</td>
                   <td>{r.featured ? '★' : '—'}</td>
                   <td style={{ display: 'flex', gap: 8 }}>
@@ -233,6 +258,13 @@ export default function AdminReviews() {
                   <td className="muted">{r.courseSlug}</td>
                   <td>{'★'.repeat(r.stars)}</td>
                   <td style={{ maxWidth: 320 }}>{r.text}</td>
+                  <td className="muted">
+                    {new Date(r.reviewDate || r.createdAt).toLocaleDateString('en-IN', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </td>
                   <td>{r.approved ? '✓' : '—'}</td>
                   <td>{r.featured ? '★' : '—'}</td>
                   <td style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
