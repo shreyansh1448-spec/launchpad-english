@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
@@ -30,6 +30,15 @@ import AdminAccount from './pages/admin/AdminAccount.jsx';
 export default function App() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
+
+  // React Router doesn't reset scroll position on navigation the way a full
+  // page load does, so clicking a link (e.g. from the footer) while scrolled
+  // down otherwise lands on the new page still scrolled down. Skipped when
+  // there's a hash (e.g. /#gallery) so the existing anchor-scroll logic in
+  // Home.jsx can take over instead.
+  useEffect(() => {
+    if (!location.hash) window.scrollTo(0, 0);
+  }, [location.pathname, location.hash]);
 
   return (
     <>
