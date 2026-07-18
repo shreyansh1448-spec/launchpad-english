@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api.js';
 
-const NEW_REVIEW_DEFAULT = { courseSlug: '', name: '', role: '', stars: 5, text: '', reviewDate: '' };
+const NEW_REVIEW_DEFAULT = { courseSlug: '', name: '', role: '', stars: 5, text: '', reviewDate: '', photoUrl: '' };
 
 export default function AdminReviews() {
   const [reviews, setReviews] = useState([]);
@@ -9,11 +9,12 @@ export default function AdminReviews() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({ name: '', role: '', stars: 5, text: '', reviewDate: '' });
+  const [editForm, setEditForm] = useState({ name: '', role: '', stars: 5, text: '', reviewDate: '', photoUrl: '' });
 
   const [newReview, setNewReview] = useState(NEW_REVIEW_DEFAULT);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [photoError, setPhotoError] = useState('');
 
   function load() {
     setLoading(true);
@@ -33,6 +34,19 @@ export default function AdminReviews() {
       })
       .catch(() => {});
   }, []);
+
+  function handlePhoto(e, onLoaded) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoError('');
+    if (file.size > 2 * 1024 * 1024) {
+      setPhotoError('Photo must be under 2MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => onLoaded(reader.result);
+    reader.readAsDataURL(file);
+  }
 
   async function handleCreate(e) {
     e.preventDefault();
@@ -92,6 +106,7 @@ export default function AdminReviews() {
       stars: review.stars,
       text: review.text,
       reviewDate: date ? date.slice(0, 10) : '',
+      photoUrl: review.photoUrl || '',
     });
   }
 
@@ -170,9 +185,24 @@ export default function AdminReviews() {
           value={newReview.reviewDate}
           onChange={(e) => setNewReview({ ...newReview, reviewDate: e.target.value })}
         />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => handlePhoto(e, (dataUrl) => setNewReview((prev) => ({ ...prev, photoUrl: dataUrl })))}
+          />
+          {newReview.photoUrl && (
+            <img
+              src={newReview.photoUrl}
+              alt="preview"
+              style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }}
+            />
+          )}
+        </div>
         <button className="btn btn-sm" type="submit" disabled={creating}>
           {creating ? 'Adding…' : 'Add review'}
         </button>
+        {photoError && <div className="form-alert error" style={{ width: '100%' }}>{photoError}</div>}
         {createError && <div className="form-alert error" style={{ width: '100%' }}>{createError}</div>}
       </form>
 
@@ -182,6 +212,7 @@ export default function AdminReviews() {
         <table className="admin-table">
           <thead>
             <tr>
+              <th>Photo</th>
               <th>Name</th>
               <th>Role</th>
               <th>Course</th>
@@ -197,6 +228,21 @@ export default function AdminReviews() {
             {reviews.map((r) =>
               editingId === r._id ? (
                 <tr key={r._id}>
+                  <td style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {editForm.photoUrl && (
+                      <img
+                        src={editForm.photoUrl}
+                        alt="preview"
+                        style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }}
+                      />
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ width: 90 }}
+                      onChange={(e) => handlePhoto(e, (dataUrl) => setEditForm((prev) => ({ ...prev, photoUrl: dataUrl })))}
+                    />
+                  </td>
                   <td>
                     <input
                       className="form-control"
@@ -253,6 +299,30 @@ export default function AdminReviews() {
                 </tr>
               ) : (
                 <tr key={r._id}>
+                  <td>
+                    {r.photoUrl ? (
+                      <img
+                        src={r.photoUrl}
+                        alt={r.name}
+                        style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 8,
+                          background: '#eee',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 12,
+                        }}
+                      >
+                        —
+                      </div>
+                    )}
+                  </td>
                   <td>{r.name}</td>
                   <td className="muted">{r.role}</td>
                   <td className="muted">{r.courseSlug}</td>

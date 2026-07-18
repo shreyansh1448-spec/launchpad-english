@@ -69,6 +69,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
     if ('role' in req.body) update.role = req.body.role;
     if ('text' in req.body) update.text = req.body.text;
     if ('reviewDate' in req.body) update.reviewDate = req.body.reviewDate || null;
+    if ('photoUrl' in req.body) update.photoUrl = req.body.photoUrl || '';
     if ('stars' in req.body) {
       const stars = Number(req.body.stars);
       if (stars < 1 || stars > 5) return res.status(400).json({ error: 'Stars must be between 1 and 5' });
