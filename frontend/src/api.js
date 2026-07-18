@@ -36,18 +36,6 @@ function adminRequest(path, options = {}) {
   return request(path, { ...options, headers: { Authorization: `Bearer ${getAdminToken()}`, ...(options.headers || {}) } });
 }
 
-// Multipart upload - deliberately bypasses `request`'s JSON Content-Type so
-// the browser can set the correct multipart boundary header itself.
-async function adminUpload(path, formData) {
-  const res = await fetch(`${API_URL}${path}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${getAdminToken()}` },
-    body: formData,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'Upload failed. Please try again.');
-  return data;
-}
 
 export const api = {
   getCourses: () => request('/courses'),
@@ -88,11 +76,23 @@ export const api = {
     listCourses: () => adminRequest('/courses/admin/all'),
     createCourse: (payload) => adminRequest('/courses', { method: 'POST', body: JSON.stringify(payload) }),
     updateCourse: (slug, payload) => adminRequest(`/courses/${slug}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    // PDFs are read client-side and sent as a base64 data URL (JSON), rather
+    // than multipart to disk - Vercel's serverless filesystem is read-only,
+    // so on-disk uploads aren't an option there. Capped at 3MB.
     uploadResource: (slug, title, file) => {
-      const formData = new FormData();
-      formData.append('title', title);
-      formData.append('file', file);
-      return adminUpload(`/courses/${slug}/resources`, formData);
+      if (file.size > 3 * 1024 * 1024) return Promise.reject(new Error('PDF must be under 3MB'));
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () =>
+          adminRequest(`/courses/${slug}/resources`, {
+            method: 'POST',
+            body: JSON.stringify({ title, dataUrl: reader.result }),
+          })
+            .then(resolve)
+            .catch(reject);
+        reader.onerror = () => reject(new Error('Could not read file'));
+        reader.readAsDataURL(file);
+      });
     },
     deleteResource: (slug, resourceId) => adminRequest(`/courses/${slug}/resources/${resourceId}`, { method: 'DELETE' }),
 
@@ -103,11 +103,6 @@ export const api = {
     createGalleryItem: (payload) => adminRequest('/gallery', { method: 'POST', body: JSON.stringify(payload) }),
     updateGalleryItem: (id, payload) => adminRequest(`/gallery/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
     deleteGalleryItem: (id) => adminRequest(`/gallery/${id}`, { method: 'DELETE' }),
-    uploadGalleryFile: (file) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      return adminUpload('/gallery/upload', formData);
-    },
 
     listReviews: () => adminRequest('/reviews/admin/all'),
     createReview: (payload) => adminRequest('/reviews/admin', { method: 'POST', body: JSON.stringify(payload) }),

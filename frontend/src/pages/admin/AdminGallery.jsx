@@ -71,27 +71,36 @@ export default function AdminGallery() {
     }
   }
 
-  // Uploads straight from disk (POST /api/gallery/upload) instead of pasting
-  // an external URL. The backend reports back whether it saved an image or a
-  // video, so the form field + media type stay in sync with what was picked.
-  async function handleFileUpload(e, target) {
+  // Images are read client-side and embedded as a base64 data URL directly
+  // in imageUrl - Vercel's serverless filesystem is read-only, so on-disk
+  // uploads aren't an option there. Videos are too large for this (and for
+  // MongoDB) - those still need a hosted URL (YouTube embed or direct .mp4).
+  function handleFileUpload(e, target) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadError('');
+    if (file.size > 3 * 1024 * 1024) {
+      setUploadError('Image must be under 3MB');
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
-    try {
-      const { url, mediaType } = await api.admin.uploadGalleryFile(file);
+    const reader = new FileReader();
+    reader.onload = () => {
       if (target === 'thumbnail') {
-        setForm((f) => ({ ...f, imageUrl: url }));
+        setForm((f) => ({ ...f, imageUrl: reader.result }));
       } else {
-        setForm((f) => ({ ...f, mediaType, [mediaType === 'video' ? 'videoUrl' : 'imageUrl']: url }));
+        setForm((f) => ({ ...f, mediaType: 'image', imageUrl: reader.result }));
       }
-    } catch (err) {
-      setUploadError(err.message);
-    } finally {
       setUploading(false);
       e.target.value = '';
-    }
+    };
+    reader.onerror = () => {
+      setUploadError('Could not read file');
+      setUploading(false);
+      e.target.value = '';
+    };
+    reader.readAsDataURL(file);
   }
 
   return (
@@ -134,10 +143,8 @@ export default function AdminGallery() {
             <div className="form-group">
               <label>Video URL (YouTube embed URL, e.g. https://www.youtube.com/embed/VIDEO_ID, or a direct .mp4 URL)</label>
               <input className="form-control" value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} required />
-              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="muted" style={{ fontSize: 13 }}>or upload a video file directly:</span>
-                <input type="file" accept="video/*" disabled={uploading} onChange={(e) => handleFileUpload(e, 'video')} />
-                {uploading && <span className="spinner" />}
+              <div className="muted" style={{ fontSize: 13, marginTop: 8 }}>
+                Video files must be hosted elsewhere (YouTube, Vimeo, etc.) and linked here - too large to store directly.
               </div>
             </div>
             <div className="form-group">

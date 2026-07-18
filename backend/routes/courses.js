@@ -4,7 +4,6 @@ const path = require('path');
 const router = express.Router();
 const Course = require('../models/Course');
 const requireAdmin = require('../middleware/adminAuth');
-const upload = require('../middleware/upload');
 
 // GET /api/courses -> list of active courses, sorted for display
 router.get('/', async (req, res) => {
@@ -70,25 +69,21 @@ router.put('/:slug', requireAdmin, async (req, res) => {
   }
 });
 
-// POST /api/courses/:slug/resources -> admin only, upload one PDF (multipart
-// form field "file") with a "title" field (e.g. "Brochure", "Syllabus PDF").
-// Appends to the course's resources list; the file is served statically from
-// /uploads/resources/:slug/...
-router.post('/:slug/resources', requireAdmin, (req, res, next) => {
-  upload.single('file')(req, res, (err) => {
-    if (err) return res.status(400).json({ error: err.message });
-    next();
-  });
-}, async (req, res) => {
+// POST /api/courses/:slug/resources -> admin only, add one PDF resource.
+// body: { title, dataUrl } - dataUrl is a base64 "data:application/pdf;..."
+// string read client-side and stored directly (Vercel's serverless
+// filesystem is read-only, so on-disk uploads aren't an option there).
+router.post('/:slug/resources', requireAdmin, async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'No PDF file uploaded' });
-    if (!req.body.title) return res.status(400).json({ error: 'title is required' });
+    const { title, dataUrl } = req.body;
+    if (!dataUrl) return res.status(400).json({ error: 'No PDF file uploaded' });
+    if (!title) return res.status(400).json({ error: 'title is required' });
+    if (!/^data:application\/pdf/.test(dataUrl)) return res.status(400).json({ error: 'Only PDF files are allowed' });
 
     const course = await Course.findOne({ slug: req.params.slug });
     if (!course) return res.status(404).json({ error: 'Course not found' });
 
-    const url = `/uploads/resources/${req.params.slug}/${req.file.filename}`;
-    course.resources.push({ title: req.body.title, url });
+    course.resources.push({ title, url: dataUrl });
     await course.save();
     res.status(201).json(course);
   } catch (err) {
@@ -97,7 +92,8 @@ router.post('/:slug/resources', requireAdmin, (req, res, next) => {
 });
 
 // DELETE /api/courses/:slug/resources/:resourceId -> admin only, removes the
-// resource entry and deletes the file from disk.
+// resource entry (and the on-disk file, for older resources uploaded before
+// the switch to base64 storage).
 router.delete('/:slug/resources/:resourceId', requireAdmin, async (req, res) => {
   try {
     const course = await Course.findOne({ slug: req.params.slug });
@@ -106,8 +102,10 @@ router.delete('/:slug/resources/:resourceId', requireAdmin, async (req, res) => 
     const resource = course.resources.id(req.params.resourceId);
     if (!resource) return res.status(404).json({ error: 'Resource not found' });
 
-    const filePath = path.join(__dirname, '..', resource.url.replace(/^\/uploads\//, 'uploads/'));
-    fs.unlink(filePath, () => {}); // best-effort - resource entry is removed regardless
+    if (resource.url.startsWith('/uploads/')) {
+      const filePath = path.join(__dirname, '..', resource.url.replace(/^\/uploads\//, 'uploads/'));
+      fs.unlink(filePath, () => {}); // best-effort - resource entry is removed regardless
+    }
 
     course.resources.pull(req.params.resourceId);
     await course.save();

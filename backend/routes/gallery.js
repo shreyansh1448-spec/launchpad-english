@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const Gallery = require('../models/Gallery');
 const requireAdmin = require('../middleware/adminAuth');
-const upload = require('../middleware/galleryUpload');
 
 // GET /api/gallery?category=classroom -> active photos, in display order
 router.get('/', async (req, res) => {
@@ -14,22 +13,6 @@ router.get('/', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
-
-// POST /api/gallery/upload (admin, multipart field "file") - uploads a photo
-// or video straight from disk instead of pasting an external URL. Returns
-// { url, mediaType } so the admin form can drop it straight into the
-// imageUrl/videoUrl field. Served statically from /uploads/gallery/...
-router.post('/upload', requireAdmin, (req, res, next) => {
-  upload.single('file')(req, res, (err) => {
-    if (err) return res.status(400).json({ error: err.message });
-    next();
-  });
-}, (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  const mediaType = req.file.mimetype.startsWith('video/') ? 'video' : 'image';
-  const url = `/uploads/gallery/${req.file.filename}`;
-  res.status(201).json({ url, mediaType });
 });
 
 // POST /api/gallery (admin, x-admin-key header)
