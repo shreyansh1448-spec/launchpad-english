@@ -57,7 +57,11 @@ export default function Gallery({ limit }) {
       ) : (
         <div className="gallery-grid">
           {shown.map((item) => (
-            <div className="gallery-item" key={item._id} onClick={() => setLightbox(item)}>
+            <div
+              className={`gallery-item ${item.category === 'classroom' ? 'gallery-item-lg' : ''}`}
+              key={item._id}
+              onClick={() => setLightbox(item)}
+            >
               {item.imageUrl && <img src={resolveMediaUrl(item.imageUrl)} alt={item.title || 'Launch Pad English'} loading="lazy" />}
               {item.mediaType === 'video' && (
                 <div className={`gallery-play-badge ${item.imageUrl ? '' : 'gallery-play-badge-solo'}`}>▶</div>
