@@ -159,9 +159,11 @@ export default function AdminLogin() {
           <>
             <h2>Reset Password</h2>
             <p className="muted" style={{ fontSize: 13.5 }}>
-              No email provider is configured yet, so this is demo mode - the reset token is shown below instead of
-              being emailed. Wire in a real email provider in <code>backend/routes/adminAuth.js</code> to send it for
-              real.
+              {devResetToken
+                ? <>No email provider is configured yet, so this is demo mode - the reset token is shown below instead of
+                  being emailed. Wire in a real email provider in <code>backend/routes/adminAuth.js</code> to send it for
+                  real.</>
+                : 'We\'ve emailed a reset token to your admin email address. Paste it below along with your new password.'}
             </p>
             <form onSubmit={handleResetPassword}>
               {error && <div className="form-alert error">{error}</div>}

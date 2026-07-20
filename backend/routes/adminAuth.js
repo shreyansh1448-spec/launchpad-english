@@ -2,12 +2,31 @@ const crypto = require('crypto');
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { Resend } = require('resend');
 const router = express.Router();
 const Admin = require('../models/Admin');
 const requireAdmin = require('../middleware/adminAuth');
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 const TOKEN_TTL = '7d';
+
+// Only set when RESEND_API_KEY is configured - see routes/adminAuth.js
+// /forgot-password below for the demo-mode fallback when it isn't.
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+async function sendResetEmail(toEmail, token) {
+  await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
+    to: toEmail,
+    subject: 'Reset your Launch Pad English admin password',
+    html: `
+      <p>Someone requested a password reset for the Launch Pad English admin panel.</p>
+      <p>Go to the admin login page, click "Forgot password?", and paste this reset token:</p>
+      <p style="font-size:18px;font-weight:bold;letter-spacing:1px;">${token}</p>
+      <p>This token expires in 1 hour. If you didn't request this, you can ignore this email.</p>
+    `,
+  });
+}
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -47,11 +66,10 @@ router.get('/me', requireAdmin, async (req, res) => {
 });
 
 // POST /api/admin/forgot-password { email } -> generates a reset token.
-// No real email provider is configured (same as the OTP flow - see
-// routes/otp.js), so this is demo mode: the token is returned directly in
-// the response as `devResetToken` instead of being emailed. Wire in a real
-// email provider (SendGrid, Postmark, SES, etc.) here to send it for real -
-// remove `devResetToken` from the response once you do.
+// If RESEND_API_KEY is configured, emails the token for real and the
+// response never includes it. Otherwise falls back to demo mode: the token
+// is returned directly in the response as `devResetToken` instead of being
+// emailed, so the flow still works without an email provider set up.
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -66,6 +84,15 @@ router.post('/forgot-password', async (req, res) => {
     admin.resetTokenHash = hashToken(token);
     admin.resetTokenExpiry = new Date(Date.now() + RESET_TOKEN_TTL_MS);
     await admin.save();
+
+    if (resend) {
+      try {
+        await sendResetEmail(admin.email, token);
+      } catch (emailErr) {
+        console.error('Failed to send reset email:', emailErr.message);
+      }
+      return res.json({ ok: true });
+    }
 
     res.json({ ok: true, devResetToken: token });
   } catch (err) {
