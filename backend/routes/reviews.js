@@ -94,13 +94,17 @@ router.delete('/:id', requireAdmin, async (req, res) => {
 });
 
 // POST /api/reviews
-// body: { orderId, courseSlug, name, stars, text, photoUrl }
+// body: { orderId, courseSlug, name, role, stars, text, photoUrl }
 // Only accepted if orderId references a *paid* Order for that courseSlug -
-// this is what gates review-writing to verified purchasers. photoUrl is
-// optional (base64 data URL from the browser, or a hosted image URL).
+// this is what gates review-writing to verified purchasers. role and
+// photoUrl are optional (role e.g. "BPSC Account Officer"; photoUrl a
+// base64 data URL from the browser, or a hosted image URL).
+// One review per order: this upserts on `order`, so re-submitting (e.g. a
+// second visit to the form) updates the existing review instead of creating
+// a duplicate - backed by the unique index on Review.order.
 router.post('/', async (req, res) => {
   try {
-    const { orderId, courseSlug, name, stars, text, photoUrl } = req.body;
+    const { orderId, courseSlug, name, role, stars, text, photoUrl } = req.body;
     if (!orderId || !courseSlug || !name || !stars || !text) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -111,15 +115,57 @@ router.post('/', async (req, res) => {
     if (!order) {
       return res.status(403).json({ error: 'Only verified purchasers of this course can post a review' });
     }
-    const review = await Review.create({
-      order: order._id,
-      courseSlug,
-      name,
-      stars,
-      text,
-      photoUrl: photoUrl || '',
-    });
+    const review = await Review.findOneAndUpdate(
+      { order: order._id },
+      { order: order._id, source: 'purchase', courseSlug, name, role: role || '', stars, text, photoUrl: photoUrl || '' },
+      { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true }
+    );
     res.status(201).json(review);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/reviews/by-order/:orderId
+// Lets a verified purchaser fetch their own review (if any) for the order
+// they picked in the ReviewForm, so the form can prefill and switch to
+// "edit" mode instead of creating a duplicate.
+router.get('/by-order/:orderId', async (req, res) => {
+  try {
+    const order = await Order.findOne({ _id: req.params.orderId, status: 'paid' });
+    if (!order) return res.status(403).json({ error: 'Order not found' });
+    const review = await Review.findOne({ order: order._id });
+    res.json(review || null);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/reviews/by-order/:orderId
+// body: { courseSlug, name, role, stars, text, photoUrl }
+// Lets a verified purchaser edit their own existing review. Same
+// paid-order ownership check as POST /, just re-run against the review
+// already tied to that order instead of creating a new one.
+router.put('/by-order/:orderId', async (req, res) => {
+  try {
+    const { courseSlug, name, role, stars, text, photoUrl } = req.body;
+    if (!courseSlug || !name || !stars || !text) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    if (stars < 1 || stars > 5) {
+      return res.status(400).json({ error: 'Stars must be between 1 and 5' });
+    }
+    const order = await Order.findOne({ _id: req.params.orderId, courseSlug, status: 'paid' });
+    if (!order) {
+      return res.status(403).json({ error: 'Only verified purchasers of this course can edit this review' });
+    }
+    const review = await Review.findOneAndUpdate(
+      { order: order._id },
+      { name, role: role || '', stars, text, photoUrl: photoUrl || '' },
+      { new: true, runValidators: true }
+    );
+    if (!review) return res.status(404).json({ error: 'No existing review to edit' });
+    res.json(review);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

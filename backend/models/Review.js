@@ -31,4 +31,10 @@ const ReviewSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// One review per paid order - re-submitting the review form updates the
+// existing review instead of creating a duplicate (see POST / in
+// routes/reviews.js). Scoped to real ObjectId values only, so admin-added
+// testimonials (order left unset) never collide with each other.
+ReviewSchema.index({ order: 1 }, { unique: true, partialFilterExpression: { order: { $type: 'objectId' } } });
+
 module.exports = mongoose.model('Review', ReviewSchema);

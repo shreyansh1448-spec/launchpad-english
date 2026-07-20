@@ -3584,6 +3584,23 @@ background:var(--bg-soft);
 }
 
 /*====================================================
+ADMIN REVIEW CARDS
+====================================================*/
+
+.review-admin-card{
+background:#fff;
+padding:20px;
+border-radius:var(--radius);
+border:1.5px solid var(--border);
+}
+
+.review-admin-label{
+display:block;
+font-size:12.5px;
+margin-bottom:4px;
+}
+
+/*====================================================
 STATUS BADGES
 ====================================================*/
 

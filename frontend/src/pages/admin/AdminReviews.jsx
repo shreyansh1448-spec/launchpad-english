@@ -3,6 +3,29 @@ import { api } from '../../api.js';
 
 const NEW_REVIEW_DEFAULT = { courseSlug: '', name: '', role: '', stars: 5, text: '', reviewDate: '', photoUrl: '' };
 
+function Thumb({ url, size = 44 }) {
+  return url ? (
+    <img src={url} alt="" style={{ width: size, height: size, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
+  ) : (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: 10,
+        background: '#eee',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 11,
+        color: '#888',
+        flexShrink: 0,
+      }}
+    >
+      No photo
+    </div>
+  );
+}
+
 export default function AdminReviews() {
   const [reviews, setReviews] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -99,6 +122,7 @@ export default function AdminReviews() {
 
   function startEdit(review) {
     setEditingId(review._id);
+    setPhotoError('');
     const date = review.reviewDate || review.createdAt;
     setEditForm({
       name: review.name,
@@ -128,216 +152,229 @@ export default function AdminReviews() {
       <h2>Reviews</h2>
       <p className="muted" style={{ fontSize: 13.5 }}>
         Only reviews with Approved = ✓ show on the public site. Featured reviews are shown first. {reviews.length} total,
-        average {avg}★.
+        average {avg}★. Each purchaser can post one review per order - resubmitting the site's review form edits it
+        instead of creating a duplicate.
       </p>
       {error && <div className="form-alert error">{error}</div>}
 
-      <form onSubmit={handleCreate} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start', margin: '12px 0 20px' }}>
-        <select
-          className="form-control"
-          style={{ width: 220 }}
-          value={newReview.courseSlug}
-          onChange={(e) => setNewReview({ ...newReview, courseSlug: e.target.value })}
-        >
-          {courses.map((c) => (
-            <option key={c.slug} value={c.slug}>
-              {c.title}
-            </option>
-          ))}
-          <option value="general">General / Institute testimonial</option>
-        </select>
-        <input
-          className="form-control"
-          style={{ width: 160 }}
-          placeholder="Name"
-          value={newReview.name}
-          onChange={(e) => setNewReview({ ...newReview, name: e.target.value })}
-        />
-        <input
-          className="form-control"
-          style={{ width: 160 }}
-          placeholder="Role/title (optional)"
-          value={newReview.role}
-          onChange={(e) => setNewReview({ ...newReview, role: e.target.value })}
-        />
-        <input
-          className="form-control"
-          type="number"
-          min={1}
-          max={5}
-          style={{ width: 70 }}
-          value={newReview.stars}
-          onChange={(e) => setNewReview({ ...newReview, stars: e.target.value })}
-        />
-        <textarea
-          className="form-control"
-          style={{ width: 320 }}
-          rows={2}
-          placeholder="Review text (optional - leave blank for a photo-only testimonial)"
-          value={newReview.text}
-          onChange={(e) => setNewReview({ ...newReview, text: e.target.value })}
-        />
-        <input
-          className="form-control"
-          type="date"
-          style={{ width: 160 }}
-          title="Date shown on the public site (leave blank to use today's date)"
-          value={newReview.reviewDate}
-          onChange={(e) => setNewReview({ ...newReview, reviewDate: e.target.value })}
-        />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => handlePhoto(e, (dataUrl) => setNewReview((prev) => ({ ...prev, photoUrl: dataUrl })))}
-          />
-          {newReview.photoUrl && (
-            <img
-              src={newReview.photoUrl}
-              alt="preview"
-              style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }}
+      <form onSubmit={handleCreate} className="review-admin-card" style={{ margin: '12px 0 24px' }}>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <Thumb url={newReview.photoUrl} size={80} />
+            <input
+              type="file"
+              accept="image/*"
+              style={{ width: 130 }}
+              onChange={(e) => handlePhoto(e, (dataUrl) => setNewReview((prev) => ({ ...prev, photoUrl: dataUrl })))}
             />
-          )}
+            {newReview.photoUrl && (
+              <button
+                type="button"
+                className="btn btn-sm btn-navy"
+                onClick={() => setNewReview((prev) => ({ ...prev, photoUrl: '' }))}
+              >
+                Remove photo
+              </button>
+            )}
+          </div>
+          <div style={{ flex: 1, minWidth: 320, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ flex: 2, minWidth: 200 }}>
+                <label className="muted review-admin-label">Course</label>
+                <select
+                  className="form-control"
+                  style={{ width: '100%' }}
+                  value={newReview.courseSlug}
+                  onChange={(e) => setNewReview({ ...newReview, courseSlug: e.target.value })}
+                >
+                  {courses.map((c) => (
+                    <option key={c.slug} value={c.slug}>
+                      {c.title}
+                    </option>
+                  ))}
+                  <option value="general">General / Institute testimonial</option>
+                </select>
+              </div>
+              <div style={{ flex: 1, minWidth: 160 }}>
+                <label className="muted review-admin-label">Name</label>
+                <input
+                  className="form-control"
+                  style={{ width: '100%' }}
+                  value={newReview.name}
+                  onChange={(e) => setNewReview({ ...newReview, name: e.target.value })}
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: 160 }}>
+                <label className="muted review-admin-label">Role (optional)</label>
+                <input
+                  className="form-control"
+                  style={{ width: '100%' }}
+                  value={newReview.role}
+                  onChange={(e) => setNewReview({ ...newReview, role: e.target.value })}
+                />
+              </div>
+              <div style={{ width: 90 }}>
+                <label className="muted review-admin-label">Stars</label>
+                <input
+                  className="form-control"
+                  type="number"
+                  min={1}
+                  max={5}
+                  style={{ width: '100%' }}
+                  value={newReview.stars}
+                  onChange={(e) => setNewReview({ ...newReview, stars: e.target.value })}
+                />
+              </div>
+              <div style={{ width: 160 }}>
+                <label className="muted review-admin-label" title="Date shown on the public site (leave blank to use today's date)">
+                  Date (optional)
+                </label>
+                <input
+                  className="form-control"
+                  type="date"
+                  style={{ width: '100%' }}
+                  value={newReview.reviewDate}
+                  onChange={(e) => setNewReview({ ...newReview, reviewDate: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="muted review-admin-label">Review text (optional - leave blank for a photo-only testimonial)</label>
+              <textarea
+                className="form-control"
+                rows={3}
+                style={{ width: '100%', resize: 'vertical' }}
+                value={newReview.text}
+                onChange={(e) => setNewReview({ ...newReview, text: e.target.value })}
+              />
+            </div>
+            {photoError && <div className="form-alert error">{photoError}</div>}
+            {createError && <div className="form-alert error">{createError}</div>}
+            <div>
+              <button className="btn btn-sm" type="submit" disabled={creating}>
+                {creating ? 'Adding…' : 'Add review'}
+              </button>
+            </div>
+          </div>
         </div>
-        <button className="btn btn-sm" type="submit" disabled={creating}>
-          {creating ? 'Adding…' : 'Add review'}
-        </button>
-        {photoError && <div className="form-alert error" style={{ width: '100%' }}>{photoError}</div>}
-        {createError && <div className="form-alert error" style={{ width: '100%' }}>{createError}</div>}
       </form>
 
       {loading ? (
         <p className="muted">Loading reviews…</p>
       ) : (
-        <table className="admin-table">
-          <thead>
-            <tr>
-              <th>Photo</th>
-              <th>Name</th>
-              <th>Role</th>
-              <th>Course</th>
-              <th>Stars</th>
-              <th>Review</th>
-              <th>Date</th>
-              <th>Approved</th>
-              <th>Featured</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {reviews.map((r) =>
-              editingId === r._id ? (
-                <tr key={r._id}>
-                  <td style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {editForm.photoUrl && (
-                      <img
-                        src={editForm.photoUrl}
-                        alt="preview"
-                        style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }}
-                      />
-                    )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {reviews.map((r) =>
+            editingId === r._id ? (
+              <div key={r._id} className="review-admin-card">
+                <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                    <Thumb url={editForm.photoUrl} size={96} />
                     <input
                       type="file"
                       accept="image/*"
-                      style={{ width: 90 }}
+                      style={{ width: 130 }}
                       onChange={(e) => handlePhoto(e, (dataUrl) => setEditForm((prev) => ({ ...prev, photoUrl: dataUrl })))}
                     />
-                  </td>
-                  <td>
-                    <input
-                      className="form-control"
-                      value={editForm.name}
-                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="form-control"
-                      value={editForm.role || ''}
-                      onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                    />
-                  </td>
-                  <td className="muted">{r.courseSlug}</td>
-                  <td>
-                    <input
-                      className="form-control"
-                      type="number"
-                      min={1}
-                      max={5}
-                      style={{ width: 60 }}
-                      value={editForm.stars}
-                      onChange={(e) => setEditForm({ ...editForm, stars: e.target.value })}
-                    />
-                  </td>
-                  <td style={{ maxWidth: 320 }}>
-                    <textarea
-                      className="form-control"
-                      rows={3}
-                      value={editForm.text}
-                      onChange={(e) => setEditForm({ ...editForm, text: e.target.value })}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="form-control"
-                      type="date"
-                      style={{ width: 140 }}
-                      value={editForm.reviewDate}
-                      onChange={(e) => setEditForm({ ...editForm, reviewDate: e.target.value })}
-                    />
-                  </td>
-                  <td>{r.approved ? '✓' : '—'}</td>
-                  <td>{r.featured ? '★' : '—'}</td>
-                  <td style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-sm" onClick={() => saveEdit(r._id)}>
-                      Save
-                    </button>
-                    <button className="btn btn-sm btn-navy" onClick={() => setEditingId(null)}>
-                      Cancel
-                    </button>
-                  </td>
-                </tr>
-              ) : (
-                <tr key={r._id}>
-                  <td>
-                    {r.photoUrl ? (
-                      <img
-                        src={r.photoUrl}
-                        alt={r.name}
-                        style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 8,
-                          background: '#eee',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 12,
-                        }}
+                    {editForm.photoUrl && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-navy"
+                        onClick={() => setEditForm((prev) => ({ ...prev, photoUrl: '' }))}
                       >
-                        —
-                      </div>
+                        Remove photo
+                      </button>
                     )}
-                  </td>
-                  <td>{r.name}</td>
-                  <td className="muted">{r.role}</td>
-                  <td className="muted">{r.courseSlug}</td>
-                  <td>{'★'.repeat(r.stars)}</td>
-                  <td style={{ maxWidth: 320 }}>{r.text}</td>
-                  <td className="muted">
-                    {new Date(r.reviewDate || r.createdAt).toLocaleDateString('en-IN', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </td>
-                  <td>{r.approved ? '✓' : '—'}</td>
-                  <td>{r.featured ? '★' : '—'}</td>
-                  <td style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 320, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 200 }}>
+                        <label className="muted review-admin-label">Name</label>
+                        <input
+                          className="form-control"
+                          style={{ width: '100%' }}
+                          value={editForm.name}
+                          onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                        />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 200 }}>
+                        <label className="muted review-admin-label">Role</label>
+                        <input
+                          className="form-control"
+                          style={{ width: '100%' }}
+                          value={editForm.role || ''}
+                          onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                        />
+                      </div>
+                      <div style={{ width: 90 }}>
+                        <label className="muted review-admin-label">Stars</label>
+                        <input
+                          className="form-control"
+                          type="number"
+                          min={1}
+                          max={5}
+                          style={{ width: '100%' }}
+                          value={editForm.stars}
+                          onChange={(e) => setEditForm({ ...editForm, stars: e.target.value })}
+                        />
+                      </div>
+                      <div style={{ width: 160 }}>
+                        <label className="muted review-admin-label">Date</label>
+                        <input
+                          className="form-control"
+                          type="date"
+                          style={{ width: '100%' }}
+                          value={editForm.reviewDate}
+                          onChange={(e) => setEditForm({ ...editForm, reviewDate: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="muted review-admin-label">Review ({r.courseSlug})</label>
+                      <textarea
+                        className="form-control"
+                        rows={6}
+                        style={{ width: '100%', resize: 'vertical' }}
+                        value={editForm.text}
+                        onChange={(e) => setEditForm({ ...editForm, text: e.target.value })}
+                      />
+                    </div>
+                    {photoError && <div className="form-alert error">{photoError}</div>}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn btn-sm" onClick={() => saveEdit(r._id)}>
+                        Save
+                      </button>
+                      <button className="btn btn-sm btn-navy" onClick={() => setEditingId(null)}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div key={r._id} className="review-admin-card">
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                  <Thumb url={r.photoUrl} size={56} />
+                  <div style={{ flex: 1, minWidth: 260 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                      <strong style={{ fontSize: 16 }}>{r.name}</strong>
+                      {r.role && <span className="muted">{r.role}</span>}
+                      <span style={{ color: '#F59E0B' }}>{'★'.repeat(r.stars)}</span>
+                    </div>
+                    <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>
+                      {r.courseSlug} ·{' '}
+                      {new Date(r.reviewDate || r.createdAt).toLocaleDateString('en-IN', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}{' '}
+                      · {r.approved ? 'Approved ✓' : 'Not approved'}
+                      {r.featured ? ' · Featured ★' : ''}
+                    </div>
+                    {r.text && (
+                      <p style={{ marginTop: 10, marginBottom: 0, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{r.text}</p>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignContent: 'flex-start' }}>
                     <button className="btn btn-sm" onClick={() => toggleApproved(r)}>
                       {r.approved ? 'Reject' : 'Approve'}
                     </button>
@@ -350,12 +387,12 @@ export default function AdminReviews() {
                     <button className="btn btn-sm btn-navy" onClick={() => handleDelete(r._id)}>
                       Delete
                     </button>
-                  </td>
-                </tr>
-              )
-            )}
-          </tbody>
-        </table>
+                  </div>
+                </div>
+              </div>
+            )
+          )}
+        </div>
       )}
     </div>
   );

@@ -23,8 +23,34 @@ export default function ReviewForm() {
 
   const [stars, setStars] = useState(0);
   const [name, setName] = useState('');
+  const [role, setRole] = useState('');
   const [text, setText] = useState('');
   const [photo, setPhoto] = useState('');
+  const [existingReview, setExistingReview] = useState(null);
+
+  async function proceedToWrite(order) {
+    setMatchedOrder(order);
+    setName(order.name);
+    setRole('');
+    setStars(0);
+    setText('');
+    setPhoto('');
+    setExistingReview(null);
+    try {
+      const existing = await api.getReviewByOrder(order._id);
+      if (existing) {
+        setExistingReview(existing);
+        setName(existing.name || order.name);
+        setRole(existing.role || '');
+        setStars(existing.stars || 0);
+        setText(existing.text || '');
+        setPhoto(existing.photoUrl || '');
+      }
+    } catch {
+      // No existing review found (or lookup failed) - fall back to a fresh form.
+    }
+    setStep(STEP_WRITE);
+  }
 
   async function handleVerify(e) {
     e.preventDefault();
@@ -39,9 +65,7 @@ export default function ReviewForm() {
         return;
       }
       if (paidOrders.length === 1) {
-        setMatchedOrder(paidOrders[0]);
-        setName(paidOrders[0].name);
-        setStep(STEP_WRITE);
+        await proceedToWrite(paidOrders[0]);
       } else {
         setOrders(paidOrders);
         setStep(STEP_CHOOSE);
@@ -54,9 +78,7 @@ export default function ReviewForm() {
   }
 
   function chooseOrder(order) {
-    setMatchedOrder(order);
-    setName(order.name);
-    setStep(STEP_WRITE);
+    proceedToWrite(order);
   }
 
   function handlePhoto(e) {
@@ -78,14 +100,26 @@ export default function ReviewForm() {
     if (!text.trim()) return setError('Please write a short review');
     setBusy(true);
     try {
-      await api.postReview({
-        orderId: matchedOrder._id,
-        courseSlug: matchedOrder.courseSlug,
-        name,
-        stars,
-        text,
-        photoUrl: photo,
-      });
+      if (existingReview) {
+        await api.putReview(matchedOrder._id, {
+          courseSlug: matchedOrder.courseSlug,
+          name,
+          role,
+          stars,
+          text,
+          photoUrl: photo,
+        });
+      } else {
+        await api.postReview({
+          orderId: matchedOrder._id,
+          courseSlug: matchedOrder.courseSlug,
+          name,
+          role,
+          stars,
+          text,
+          photoUrl: photo,
+        });
+      }
       setStep(STEP_DONE);
     } catch (err) {
       setError(err.message);
@@ -95,7 +129,11 @@ export default function ReviewForm() {
   }
 
   if (step === STEP_DONE) {
-    return <div className="form-alert success">Thank you! Your review has been posted.</div>;
+    return (
+      <div className="form-alert success">
+        {existingReview ? 'Your review has been updated.' : 'Thank you! Your review has been posted.'}
+      </div>
+    );
   }
 
   if (step === STEP_VERIFY) {
@@ -142,7 +180,7 @@ export default function ReviewForm() {
     <form onSubmit={handleSubmit}>
       {error && <div className="form-alert error">{error}</div>}
       <p className="form-hint">
-        Reviewing: <strong>{matchedOrder.courseTitle}</strong> ({matchedOrder.mode === 'online' ? 'Online' : 'Offline'})
+        {existingReview ? 'Editing your review for' : 'Reviewing'}: <strong>{matchedOrder.courseTitle}</strong> ({matchedOrder.mode === 'online' ? 'Online' : 'Offline'})
       </p>
       <div className="form-group">
         <label>Your Rating</label>
@@ -151,6 +189,15 @@ export default function ReviewForm() {
       <div className="form-group">
         <label>Name</label>
         <input className="form-control" value={name} onChange={(e) => setName(e.target.value)} required />
+      </div>
+      <div className="form-group">
+        <label>Role / Title (optional)</label>
+        <input
+          className="form-control"
+          placeholder="e.g. BPSC Account Officer"
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+        />
       </div>
       <div className="form-group">
         <label>Photo (optional)</label>
@@ -162,7 +209,7 @@ export default function ReviewForm() {
         <textarea className="form-control" value={text} onChange={(e) => setText(e.target.value)} required />
       </div>
       <button className="btn btn-block" disabled={busy}>
-        {busy ? <span className="spinner" /> : 'Submit Review'}
+        {busy ? <span className="spinner" /> : existingReview ? 'Update Review' : 'Submit Review'}
       </button>
     </form>
   );

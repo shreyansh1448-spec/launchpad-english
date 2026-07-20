@@ -51,6 +51,8 @@ export const api = {
 
   getReviews: (courseSlug) => request(`/reviews${courseSlug ? `?courseSlug=${encodeURIComponent(courseSlug)}` : ''}`),
   postReview: (payload) => request('/reviews', { method: 'POST', body: JSON.stringify(payload) }),
+  getReviewByOrder: (orderId) => request(`/reviews/by-order/${orderId}`),
+  putReview: (orderId, payload) => request(`/reviews/by-order/${orderId}`, { method: 'PUT', body: JSON.stringify(payload) }),
 
   submitLead: (payload) => request('/leads', { method: 'POST', body: JSON.stringify(payload) }),
 
