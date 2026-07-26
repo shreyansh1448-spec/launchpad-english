@@ -1,12 +1,13 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-export const API_ORIGIN = API_URL.replace(/\/api\/?$/, '');
+// Same-origin: Pages Functions serve /api/* on the same domain as the
+// frontend, so no absolute base URL (and no VITE_API_URL) is needed. Kept
+// overridable for local dev against `wrangler pages dev` on a different port.
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
-// Directly-uploaded gallery photos/videos are stored as backend-relative
-// paths (/uploads/gallery/...) - everything else (external URLs, frontend
-// /images/... assets) is already a full path the browser can load as-is.
+// D1-backed rows now always store full, absolute media URLs (external URLs
+// or ones already pointed at their final host) - kept as a passthrough for
+// any component still calling it.
 export function resolveMediaUrl(url) {
-  if (!url) return url;
-  return url.startsWith('/uploads/') ? `${API_ORIGIN}${url}` : url;
+  return url;
 }
 const ADMIN_TOKEN_STORAGE = 'lpe_admin_token';
 

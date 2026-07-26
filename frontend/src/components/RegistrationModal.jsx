@@ -21,7 +21,8 @@ const STEP_SUCCESS = 'success';
 
 // Registration + payment modal.
 // Student first picks Online or Offline (live pricing shown for both), then
-// fills in Fields: name, phone (+ OTP verify), email (no OTP), address.
+// fills in Fields: name, phone, email, address (no OTP step - Razorpay's own
+// checkout already handles RBI-mandated payment authentication).
 // Payment: creates a Razorpay order on the backend (price pulled live from
 // the course's DB pricing), opens Razorpay Checkout, then verifies the
 // signature server-side before marking the order paid.
@@ -35,51 +36,13 @@ export default function RegistrationModal({ course, mode: fixedMode, onClose }) 
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
 
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState('');
-  const [devOtp, setDevOtp] = useState('');
-  const [phoneVerified, setPhoneVerified] = useState(false);
-  const [otpBusy, setOtpBusy] = useState(false);
-  const [otpError, setOtpError] = useState('');
-
   const [error, setError] = useState('');
   const [paidOrder, setPaidOrder] = useState(null);
-
-  async function handleSendOtp() {
-    setOtpError('');
-    if (!/^\d{10}$/.test(phone.replace(/\D/g, '').slice(-10))) {
-      setOtpError('Enter a valid 10-digit phone number first');
-      return;
-    }
-    setOtpBusy(true);
-    try {
-      const res = await api.sendOtp(phone);
-      setOtpSent(true);
-      setDevOtp(res.devOtp || ''); // demo mode only - see backend/routes/otp.js
-    } catch (err) {
-      setOtpError(err.message);
-    } finally {
-      setOtpBusy(false);
-    }
-  }
-
-  async function handleVerifyOtp() {
-    setOtpError('');
-    setOtpBusy(true);
-    try {
-      await api.verifyOtp(phone, otp);
-      setPhoneVerified(true);
-    } catch (err) {
-      setOtpError(err.message);
-    } finally {
-      setOtpBusy(false);
-    }
-  }
 
   async function handlePayNow(e) {
     e.preventDefault();
     setError('');
-    if (!phoneVerified) return setError('Please verify your phone number with OTP first');
+    if (!/^\d{10}$/.test(phone.replace(/\D/g, '').slice(-10))) return setError('Enter a valid 10-digit phone number');
     if (!name || !email || !address) return setError('Please fill in all fields');
 
     setStep(STEP_PAYING);
@@ -201,50 +164,15 @@ export default function RegistrationModal({ course, mode: fixedMode, onClose }) 
 
               <div className="form-group">
                 <label>Phone Number</label>
-                <div className="form-row">
-                  <input
-                    className="form-control"
-                    type="tel"
-                    placeholder="10-digit mobile number"
-                    value={phone}
-                    disabled={phoneVerified}
-                    onChange={(e) => setPhone(e.target.value)}
-                    required
-                  />
-                  {!phoneVerified && (
-                    <button type="button" className="btn btn-navy btn-sm" onClick={handleSendOtp} disabled={otpBusy}>
-                      {otpBusy ? <span className="spinner" /> : otpSent ? 'Resend OTP' : 'Send OTP'}
-                    </button>
-                  )}
-                  {phoneVerified && <span className="otp-badge verified">✓ Verified</span>}
-                </div>
-                {devOtp && !phoneVerified && (
-                  <p className="form-hint">
-                    Demo mode - no SMS provider connected, so your OTP is: <strong>{devOtp}</strong> (see README to
-                    wire in a real SMS provider)
-                  </p>
-                )}
+                <input
+                  className="form-control"
+                  type="tel"
+                  placeholder="10-digit mobile number"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                />
               </div>
-
-              {otpSent && !phoneVerified && (
-                <div className="form-group">
-                  <label>Enter OTP</label>
-                  <div className="form-row">
-                    <input
-                      className="form-control"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      maxLength={6}
-                      placeholder="6-digit code"
-                    />
-                    <button type="button" className="btn btn-sm" onClick={handleVerifyOtp} disabled={otpBusy}>
-                      {otpBusy ? <span className="spinner" /> : 'Verify'}
-                    </button>
-                  </div>
-                  {otpError && <div className="form-error">{otpError}</div>}
-                </div>
-              )}
-              {otpError && !otpSent && <div className="form-error">{otpError}</div>}
 
               <div className="form-group">
                 <label>Email Address</label>

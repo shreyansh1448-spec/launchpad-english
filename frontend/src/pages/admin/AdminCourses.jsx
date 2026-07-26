@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { api, API_ORIGIN } from '../../api.js';
+import { api, resolveMediaUrl } from '../../api.js';
 
 const LINES_FIELDS = [
   { key: 'highlights', label: 'Highlights (one per line)' },
@@ -404,7 +404,7 @@ export default function AdminCourses() {
               <tr key={r._id}>
                 <td>{r.title}</td>
                 <td>
-                  <a href={`${API_ORIGIN}${r.url}`} target="_blank" rel="noreferrer">
+                  <a href={resolveMediaUrl(r.url)} target="_blank" rel="noreferrer">
                     View PDF
                   </a>
                 </td>

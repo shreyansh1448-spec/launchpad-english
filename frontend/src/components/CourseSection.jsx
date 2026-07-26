@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Reveal from './Reveal.jsx';
-import { API_ORIGIN } from '../api.js';
+import { resolveMediaUrl } from '../api.js';
 import PriceTag from './PriceTag.jsx';
 
 // Full detailed course block - used on the Online Courses / Offline Courses
@@ -112,7 +112,7 @@ function ResourcesBlock({ resources }) {
       <h3>Course Resources</h3>
       <div className="resource-grid">
         {resources.map((r) => (
-          <a className="resource-card" href={`${API_ORIGIN}${r.url}`} target="_blank" rel="noreferrer" key={r._id || r.url}>
+          <a className="resource-card" href={resolveMediaUrl(r.url)} target="_blank" rel="noreferrer" key={r._id || r.url}>
             <span className="resource-icon">📄</span>
             <span>
               <strong>{r.title}</strong>

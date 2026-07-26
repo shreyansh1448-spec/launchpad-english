@@ -1,0 +1,32 @@
+# Cloudflare Pages project config for Launch Pad English.
+#
+# Setup (run once, from frontend/):
+#   1. wrangler login
+#   2. wrangler d1 create launchpad-english
+#      -> copy the printed database_id into [[d1_databases]] below
+#   3. wrangler kv namespace create OTP_KV
+#      -> copy the printed id into [[kv_namespaces]] below
+#   4. wrangler d1 execute launchpad-english --file=../db/schema.sql --remote
+#   5. wrangler pages secret put JWT_SECRET
+#      wrangler pages secret put RAZORPAY_KEY_ID
+#      wrangler pages secret put RAZORPAY_KEY_SECRET
+#      wrangler pages secret put RESEND_API_KEY
+#      wrangler pages secret put RESEND_FROM_EMAIL
+#   6. npm run pages:deploy
+#
+# Local dev (`npm run pages:dev`) uses a local D1/KV emulator automatically -
+# apply the schema locally first: wrangler d1 execute launchpad-english
+# --file=../db/schema.sql --local
+
+name = "launchpad-english"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "launchpad-english"
+database_id = "ef5c7321-df58-40aa-aa72-1949379d9fe0"
+
+[[kv_namespaces]]
+binding = "OTP_KV"
+id = "db6debcc5fa2424e8e32b68b980a2ff4"
