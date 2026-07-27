@@ -65,6 +65,9 @@ const TESTIMONIALS = [
   { name: 'Dev', title: 'Student', text: '', photo: 'https://www.launchpadenglish.com/wp-content/uploads/2024/10/Dev-launch-pad-english-review.webp' },
   { name: 'Anubhav Rodhia', title: 'Student', text: '', photo: 'https://www.launchpadenglish.com/wp-content/uploads/2024/10/Anubhav-rodhia-launch-pad-english-review.webp' },
   { name: 'Avinashi Lal', title: 'Student', text: "The dedication and expertise of the instructors at Launch Pad English Learning Institute are truly remarkable. The personalized attention, systematic approach, and abundant resources have made my English learning journey both smooth and fulfilling. An institute I would recommend to anyone seeking to enhance their language skills.", photo: 'https://www.launchpadenglish.com/wp-content/uploads/2024/10/Avinashi-Lal-LAunch-Pad-English-review.webp' },
+  { name: 'Tej Prakash Singh', title: 'Sub Inspector', text: '', photo: 'https://www.launchpadenglish.com/wp-content/uploads/2025/03/Tej-Prakash-Singh.jpg' },
+  { name: 'Mangal Yadav', title: 'Tehsildar', text: '', photo: 'https://www.launchpadenglish.com/wp-content/uploads/2025/03/mangal-yadav.png' },
+  { name: 'Piyush Gupta', title: 'DU Professor', text: '', photo: 'https://www.launchpadenglish.com/wp-content/uploads/2025/03/Piyush-Gupta.jpg' },
 ];
 
 async function importTestimonials() {
