@@ -64,7 +64,6 @@ export default function ReviewList({ courseSlug }) {
           </div>
           {r.role && <div className="muted" style={{ fontSize: 13.5 }}>{r.role}</div>}
           <ReviewStars value={r.stars} readOnly />
-          <div className="review-date">{new Date(r.reviewDate || r.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</div>
           {r.text && <p className="review-text">{r.text}</p>}
         </div>
       </div>
