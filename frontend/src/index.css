@@ -1,11 +1,12 @@
 /* ===========================================================
    LAUNCHPAD ENGLISH
-   PREMIUM CSS 2026
+   PREMIUM CSS 2026 (build 2)
    PART 1
    Variables • Reset • Typography • Utilities • Buttons • Cards
 =========================================================== */
 
 :root{
+--build-rev:2;
 
 /*========== COLORS ==========*/
 
@@ -1609,10 +1610,9 @@ POPULAR BADGE
 ====================================================*/
 
 .course-card .badge{
-position:absolute;
-top:16px;
-left:16px;
-z-index:3;
+display:inline-block;
+align-self:flex-start;
+margin-bottom:12px;
 padding:6px 14px;
 border-radius:999px;
 background:var(--primary);

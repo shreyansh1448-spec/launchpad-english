@@ -66,7 +66,7 @@ const SiteContentSchema = new mongoose.Schema({
         imageUrl: '/images/launchpad-banner.jfif',
         ctaText: 'Join Now',
         ctaSubtext: '',
-        ctaLink: '/online-courses',
+        ctaLink: '/#courses',
       },
     ],
   },

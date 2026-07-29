@@ -18,7 +18,7 @@ const DEFAULT_SLIDES = [
     ],
     imageUrl: '/images/launchpad-banner.jfif',
     ctaText: 'Join Now',
-    ctaLink: '/online-courses',
+    ctaLink: '/#courses',
   },
 ];
 
@@ -66,7 +66,7 @@ export default function HeroSlider({ slides }) {
                       {slide.ctaText || 'Join Now'}
                     </Link>
                   ) : (
-                    <Link className="btn btn-gradient" to="/online-courses">
+                    <Link className="btn btn-gradient" to="/#courses">
                       Join Now
                     </Link>
                   )}
