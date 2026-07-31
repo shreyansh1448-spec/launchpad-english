@@ -75,6 +75,9 @@ export default function Header() {
             <NavLink to="/faqs" onClick={() => setOpen(false)} className={({ isActive }) => (isActive ? 'active' : '')}>
               FAQs
             </NavLink>
+            <NavLink to="/blog" onClick={() => setOpen(false)} className={({ isActive }) => (isActive ? 'active' : '')}>
+              Blogs
+            </NavLink>
             <NavLink to="/contact" onClick={() => setOpen(false)} className={({ isActive }) => (isActive ? 'active' : '')}>
               Contact
             </NavLink>

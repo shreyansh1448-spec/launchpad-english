@@ -6,6 +6,7 @@ const ADMIN_NAV = [
   { to: '/admin/courses', label: 'Courses' },
   { to: '/admin/site-content', label: 'Site Content' },
   { to: '/admin/gallery', label: 'Gallery' },
+  { to: '/admin/blog', label: 'Blogs' },
   { to: '/admin/reviews', label: 'Reviews' },
   { to: '/admin/leads', label: 'Leads' },
   { to: '/admin/orders', label: 'Orders' },

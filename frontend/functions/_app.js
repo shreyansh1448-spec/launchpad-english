@@ -8,6 +8,7 @@ import leadsRoutes from './routes/leads.js';
 import galleryRoutes from './routes/gallery.js';
 import siteContentRoutes from './routes/siteContent.js';
 import adminAuthRoutes from './routes/adminAuth.js';
+import blogRoutes from './routes/blog.js';
 
 const app = new Hono().basePath('/api');
 
@@ -21,6 +22,7 @@ app.route('/leads', leadsRoutes);
 app.route('/gallery', galleryRoutes);
 app.route('/site-content', siteContentRoutes);
 app.route('/admin', adminAuthRoutes);
+app.route('/blog', blogRoutes);
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404));
 app.onError((err, c) => {

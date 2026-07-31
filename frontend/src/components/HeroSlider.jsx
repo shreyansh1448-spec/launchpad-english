@@ -5,7 +5,7 @@ import useTypewriter from '../hooks/useTypewriter.js';
 const DEFAULT_SLIDES = [
   {
     type: 'image',
-    heading: 'Speak English fluently, clearly, & confidently.',
+    heading: 'Speak English Fluently, Clearly, & Confidently.',
     subheading: 'Learn English through the Fastest Technology',
     description:
       "Whether you're a student, professional, or job seeker - we help you achieve your goals with practical English.",

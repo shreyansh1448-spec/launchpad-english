@@ -127,6 +127,20 @@ CREATE TABLE reviews (
 CREATE UNIQUE INDEX idx_reviews_order_id ON reviews(order_id);
 CREATE INDEX idx_reviews_course_slug ON reviews(course_slug);
 
+CREATE TABLE blog_posts (
+  id TEXT PRIMARY KEY,
+  slug TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  excerpt TEXT NOT NULL DEFAULT '',
+  content TEXT NOT NULL DEFAULT '',   -- sanitized HTML, rendered as-is on the detail page
+  thumbnail TEXT NOT NULL DEFAULT '',
+  published_at TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX idx_blog_posts_published_at ON blog_posts(published_at);
+
 CREATE TABLE site_content (
   id TEXT PRIMARY KEY DEFAULT '1',
   site_name TEXT NOT NULL DEFAULT 'Launch Pad English',

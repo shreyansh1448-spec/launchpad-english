@@ -10,6 +10,8 @@ import OnlineCourses from './pages/OnlineCourses.jsx';
 import OfflineCourses from './pages/OfflineCourses.jsx';
 import CourseDetail from './pages/CourseDetail.jsx';
 import GalleryPage from './pages/GalleryPage.jsx';
+import Blog from './pages/Blog.jsx';
+import BlogPost from './pages/BlogPost.jsx';
 import Counselling from './pages/Counselling.jsx';
 import FAQs from './pages/FAQs.jsx';
 import Contact from './pages/Contact.jsx';
@@ -22,6 +24,7 @@ import AdminLayout from './pages/admin/AdminLayout.jsx';
 import AdminCourses from './pages/admin/AdminCourses.jsx';
 import AdminSiteContent from './pages/admin/AdminSiteContent.jsx';
 import AdminGallery from './pages/admin/AdminGallery.jsx';
+import AdminBlog from './pages/admin/AdminBlog.jsx';
 import AdminReviews from './pages/admin/AdminReviews.jsx';
 import AdminLeads from './pages/admin/AdminLeads.jsx';
 import AdminOrders from './pages/admin/AdminOrders.jsx';
@@ -51,6 +54,8 @@ export default function App() {
           <Route path="/offline-courses" element={<OfflineCourses />} />
           <Route path="/course/:mode/:slug" element={<CourseDetail />} />
           <Route path="/gallery" element={<GalleryPage />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/:slug" element={<BlogPost />} />
           <Route path="/counselling" element={<Counselling />} />
           <Route path="/faqs" element={<FAQs />} />
           <Route path="/contact" element={<Contact />} />
@@ -65,6 +70,7 @@ export default function App() {
               <Route path="courses" element={<AdminCourses />} />
               <Route path="site-content" element={<AdminSiteContent />} />
               <Route path="gallery" element={<AdminGallery />} />
+              <Route path="blog" element={<AdminBlog />} />
               <Route path="reviews" element={<AdminReviews />} />
               <Route path="leads" element={<AdminLeads />} />
               <Route path="orders" element={<AdminOrders />} />

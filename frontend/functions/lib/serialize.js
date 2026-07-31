@@ -98,6 +98,21 @@ function serializeReview(row) {
   };
 }
 
+function serializeBlogPost(row) {
+  return {
+    _id: row.id,
+    slug: row.slug,
+    title: row.title,
+    excerpt: row.excerpt,
+    content: row.content,
+    thumbnail: row.thumbnail,
+    publishedAt: row.published_at,
+    active: toBool(row.active),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 function serializeLead(row) {
   return {
     _id: row.id,
@@ -141,4 +156,5 @@ export {
   serializeReview,
   serializeLead,
   serializeSiteContent,
+  serializeBlogPost,
 };

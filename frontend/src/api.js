@@ -59,6 +59,9 @@ export const api = {
 
   getGallery: (category) => request(`/gallery${category ? `?category=${encodeURIComponent(category)}` : ''}`),
 
+  getBlogPosts: (page = 1) => request(`/blog?page=${encodeURIComponent(page)}`),
+  getBlogPost: (slug) => request(`/blog/${slug}`),
+
   getSiteContent: () => request('/site-content'),
 
   // --- Admin (all require the session token from logging in, stored via setAdminToken) ---
@@ -118,5 +121,11 @@ export const api = {
     listOrders: (search) => adminRequest(`/payment/admin/orders${search ? `?search=${encodeURIComponent(search)}` : ''}`),
     updateOrderNotes: (id, notes) => adminRequest(`/payment/admin/orders/${id}/notes`, { method: 'PUT', body: JSON.stringify({ notes }) }),
     createManualOrder: (payload) => adminRequest('/payment/admin/manual-order', { method: 'POST', body: JSON.stringify(payload) }),
+
+    listBlogPosts: (page = 1, search = '') =>
+      adminRequest(`/blog/admin/all?page=${encodeURIComponent(page)}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
+    createBlogPost: (payload) => adminRequest('/blog', { method: 'POST', body: JSON.stringify(payload) }),
+    updateBlogPost: (slug, payload) => adminRequest(`/blog/${slug}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    deleteBlogPost: (slug) => adminRequest(`/blog/${slug}`, { method: 'DELETE' }),
   },
 };

@@ -54,6 +54,7 @@ export default function Footer() {
             <Link to="/offline-courses">Offline Courses</Link>
             <Link to="/online-courses">Online Courses</Link>
             <Link to="/counselling">Counselling</Link>
+            <Link to="/blog">Blogs</Link>
             <Link to="/faqs">FAQs</Link>
             <Link to="/contact">Contact</Link>
             <Link to="/admin/login">Admin</Link>

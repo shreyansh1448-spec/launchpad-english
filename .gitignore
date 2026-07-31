@@ -5,6 +5,8 @@ dist/
 .dev.vars
 .wrangler/
 db/migration-data*.sql
+db/blog_seed*.sql
+db/blog_seed_chunks/
 *.log
 .DS_Store
 .claude/
