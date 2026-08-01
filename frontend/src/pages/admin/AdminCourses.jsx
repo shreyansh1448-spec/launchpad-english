@@ -7,16 +7,15 @@ const LINES_FIELDS = [
   { key: 'dailyPattern', label: 'Daily Class Pattern (one per line)' },
   { key: 'outcomes', label: 'Learning Outcomes (one per line)' },
 ];
-const JSON_FIELDS = [
-  { key: 'syllabus', label: 'Syllabus JSON (array of { module, points[] })' },
-  { key: 'faqs', label: 'FAQs JSON (array of { q, a })' },
-  { key: 'batchTimings', label: 'Batch Timings JSON ({ online[], offline[] })' },
-];
 
 function toForm(course) {
   const form = { ...course };
   for (const { key } of LINES_FIELDS) form[key] = (course[key] || []).join('\n');
-  for (const { key } of JSON_FIELDS) form[key] = JSON.stringify(course[key] ?? (key === 'batchTimings' ? {} : []), null, 2);
+  form.syllabus = (course.syllabus || []).map((s) => ({ module: s.module || '', pointsText: (s.points || []).join('\n') }));
+  form.faqs = (course.faqs || []).map((f) => ({ q: f.q || '', a: f.a || '' }));
+  const bt = course.batchTimings || { online: [], offline: [] };
+  form.batchTimingsOnline = (bt.online || []).join('\n');
+  form.batchTimingsOffline = (bt.offline || []).join('\n');
   form.pricing = JSON.parse(JSON.stringify(course.pricing || { online: { mrp: 0, offer: 0 }, offline: { mrp: 0, offer: 0 } }));
   return form;
 }
@@ -112,13 +111,16 @@ export default function AdminCourses() {
       for (const { key } of LINES_FIELDS) {
         payload[key] = form[key].split('\n').map((s) => s.trim()).filter(Boolean);
       }
-      for (const { key } of JSON_FIELDS) {
-        try {
-          payload[key] = JSON.parse(form[key]);
-        } catch {
-          throw new Error(`"${key}" is not valid JSON`);
-        }
-      }
+      payload.syllabus = form.syllabus
+        .map((s) => ({ module: s.module.trim(), points: s.pointsText.split('\n').map((s) => s.trim()).filter(Boolean) }))
+        .filter((s) => s.module || s.points.length);
+      payload.faqs = form.faqs.map((f) => ({ q: f.q.trim(), a: f.a.trim() })).filter((f) => f.q || f.a);
+      payload.batchTimings = {
+        online: form.batchTimingsOnline.split('\n').map((s) => s.trim()).filter(Boolean),
+        offline: form.batchTimingsOffline.split('\n').map((s) => s.trim()).filter(Boolean),
+      };
+      delete payload.batchTimingsOnline;
+      delete payload.batchTimingsOffline;
       payload.pricing = {
         online: { mrp: Number(form.pricing.online.mrp), offer: Number(form.pricing.online.offer) },
         offline: { mrp: Number(form.pricing.offline.mrp), offer: Number(form.pricing.offline.offer) },
@@ -157,6 +159,34 @@ export default function AdminCourses() {
   }
   function setPriceField(mode, key, value) {
     setForm((f) => ({ ...f, pricing: { ...f.pricing, [mode]: { ...f.pricing[mode], [key]: value } } }));
+  }
+
+  function addSyllabusModule() {
+    setForm((f) => ({ ...f, syllabus: [...f.syllabus, { module: '', pointsText: '' }] }));
+  }
+  function updateSyllabusModule(i, key, value) {
+    setForm((f) => {
+      const syllabus = [...f.syllabus];
+      syllabus[i] = { ...syllabus[i], [key]: value };
+      return { ...f, syllabus };
+    });
+  }
+  function removeSyllabusModule(i) {
+    setForm((f) => ({ ...f, syllabus: f.syllabus.filter((_, idx) => idx !== i) }));
+  }
+
+  function addFaq() {
+    setForm((f) => ({ ...f, faqs: [...f.faqs, { q: '', a: '' }] }));
+  }
+  function updateFaq(i, key, value) {
+    setForm((f) => {
+      const faqs = [...f.faqs];
+      faqs[i] = { ...faqs[i], [key]: value };
+      return { ...f, faqs };
+    });
+  }
+  function removeFaq(i) {
+    setForm((f) => ({ ...f, faqs: f.faqs.filter((_, idx) => idx !== i) }));
   }
 
   async function handleUploadResource(e) {
@@ -364,17 +394,72 @@ export default function AdminCourses() {
           </div>
         ))}
 
-        {JSON_FIELDS.map(({ key, label }) => (
-          <div className="form-group" key={key}>
-            <label>{label}</label>
-            <textarea
-              className="form-control admin-json"
-              rows={8}
-              value={form[key]}
-              onChange={(e) => setField(key, e.target.value)}
-            />
+        <h3 className="mt-24">Syllabus</h3>
+        {form.syllabus.map((s, i) => (
+          <div className="card mb-12" key={i}>
+            <div className="form-group">
+              <label>Module {i + 1} Name</label>
+              <input className="form-control" value={s.module} onChange={(e) => updateSyllabusModule(i, 'module', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Points (one per line)</label>
+              <textarea
+                className="form-control"
+                rows={3}
+                value={s.pointsText}
+                onChange={(e) => updateSyllabusModule(i, 'pointsText', e.target.value)}
+              />
+            </div>
+            <button type="button" className="btn btn-sm btn-navy" onClick={() => removeSyllabusModule(i)}>
+              Remove Module
+            </button>
           </div>
         ))}
+        <button type="button" className="btn btn-sm mb-24" onClick={addSyllabusModule}>
+          + Add Syllabus Module
+        </button>
+
+        <h3 className="mt-24">FAQs</h3>
+        {form.faqs.map((f, i) => (
+          <div className="card mb-12" key={i}>
+            <div className="form-group">
+              <label>Question {i + 1}</label>
+              <input className="form-control" value={f.q} onChange={(e) => updateFaq(i, 'q', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Answer</label>
+              <textarea className="form-control" rows={2} value={f.a} onChange={(e) => updateFaq(i, 'a', e.target.value)} />
+            </div>
+            <button type="button" className="btn btn-sm btn-navy" onClick={() => removeFaq(i)}>
+              Remove FAQ
+            </button>
+          </div>
+        ))}
+        <button type="button" className="btn btn-sm mb-24" onClick={addFaq}>
+          + Add FAQ
+        </button>
+
+        <h3 className="mt-24">Batch Timings</h3>
+        <div className="grid grid-2">
+          <div className="form-group">
+            <label>Online Timings (one per line)</label>
+            <textarea
+              className="form-control"
+              rows={4}
+              value={form.batchTimingsOnline}
+              onChange={(e) => setField('batchTimingsOnline', e.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label>Offline Timings (one per line)</label>
+            <textarea
+              className="form-control"
+              rows={4}
+              value={form.batchTimingsOffline}
+              onChange={(e) => setField('batchTimingsOffline', e.target.value)}
+            />
+          </div>
+        </div>
 
         <button className="btn btn-block" disabled={saving}>
           {saving ? <span className="spinner" /> : creating ? 'Create Course' : 'Save Changes'}

@@ -1,24 +1,55 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api.js';
 
+function toForm(c) {
+  return {
+    ...c,
+    heroSlides: (c.heroSlides || []).map((s) => ({
+      type: s.type || 'image',
+      heading: s.heading || '',
+      subheading: s.subheading || '',
+      description: s.description || '',
+      highlightsText: (s.highlights || []).join('\n'),
+      imageUrl: s.imageUrl || '',
+      videoUrl: s.videoUrl || '',
+      ctaText: s.ctaText || '',
+      ctaSubtext: s.ctaSubtext || '',
+      ctaLink: s.ctaLink || '',
+    })),
+    batchTimingsOnlineWeekday: (c.batchTimings?.onlineWeekday || []).join('\n'),
+    batchTimingsOnlineWeekend: (c.batchTimings?.onlineWeekend || []).join('\n'),
+    batchTimingsOfflineWeekday: (c.batchTimings?.offlineWeekday || []).join('\n'),
+    batchTimingsOfflineWeekend: (c.batchTimings?.offlineWeekend || []).join('\n'),
+    stats: { coursesCount: 0, ...c.stats },
+  };
+}
+
+const EMPTY_SLIDE = {
+  type: 'image',
+  heading: '',
+  subheading: '',
+  description: '',
+  highlightsText: '',
+  imageUrl: '',
+  videoUrl: '',
+  ctaText: '',
+  ctaSubtext: '',
+  ctaLink: '',
+};
+
 export default function AdminSiteContent() {
   const [form, setForm] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   useEffect(() => {
     api.admin
       .getSiteContent()
-      .then((c) =>
-        setForm({
-          ...c,
-          heroSlides: JSON.stringify(c.heroSlides || [], null, 2),
-          batchTimings: JSON.stringify(c.batchTimings || { onlineWeekday: [], onlineWeekend: [], offlineWeekday: [], offlineWeekend: [] }, null, 2),
-          stats: { coursesCount: 0, ...c.stats },
-        })
-      )
+      .then((c) => setForm(toForm(c)))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
@@ -33,23 +64,70 @@ export default function AdminSiteContent() {
     setForm((f) => ({ ...f, social: { ...f.social, [key]: value } }));
   }
 
+  function addSlide() {
+    setForm((f) => ({ ...f, heroSlides: [...f.heroSlides, { ...EMPTY_SLIDE }] }));
+  }
+  function updateSlide(i, key, value) {
+    setForm((f) => {
+      const heroSlides = [...f.heroSlides];
+      heroSlides[i] = { ...heroSlides[i], [key]: value };
+      return { ...f, heroSlides };
+    });
+  }
+  function removeSlide(i) {
+    setForm((f) => ({ ...f, heroSlides: f.heroSlides.filter((_, idx) => idx !== i) }));
+  }
+
+  // Same base64-data-URL approach as AdminGallery.jsx / AdminHomePage.jsx -
+  // no writable filesystem to upload real files to.
+  function handleSlideImageUpload(e, i) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError('');
+    if (file.size > 3 * 1024 * 1024) {
+      setUploadError('Image must be under 3MB');
+      e.target.value = '';
+      return;
+    }
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateSlide(i, 'imageUrl', reader.result);
+      setUploading(false);
+      e.target.value = '';
+    };
+    reader.onerror = () => {
+      setUploadError('Could not read file');
+      setUploading(false);
+      e.target.value = '';
+    };
+    reader.readAsDataURL(file);
+  }
+
   async function handleSave(e) {
     e.preventDefault();
     setError('');
     setSaving(true);
     try {
-      let heroSlides;
-      try {
-        heroSlides = JSON.parse(form.heroSlides);
-      } catch {
-        throw new Error('"Hero Slides JSON" is not valid JSON');
-      }
-      let batchTimings;
-      try {
-        batchTimings = JSON.parse(form.batchTimings);
-      } catch {
-        throw new Error('"Batch Timings JSON" is not valid JSON');
-      }
+      const heroSlides = form.heroSlides.map((s) => ({
+        type: s.type,
+        heading: s.heading,
+        subheading: s.subheading,
+        description: s.description,
+        highlights: s.highlightsText.split('\n').map((t) => t.trim()).filter(Boolean),
+        imageUrl: s.imageUrl,
+        videoUrl: s.videoUrl,
+        ctaText: s.ctaText,
+        ctaSubtext: s.ctaSubtext,
+        ctaLink: s.ctaLink,
+      }));
+      const splitLines = (text) => text.split('\n').map((t) => t.trim()).filter(Boolean);
+      const batchTimings = {
+        onlineWeekday: splitLines(form.batchTimingsOnlineWeekday),
+        onlineWeekend: splitLines(form.batchTimingsOnlineWeekend),
+        offlineWeekday: splitLines(form.batchTimingsOfflineWeekday),
+        offlineWeekend: splitLines(form.batchTimingsOfflineWeekend),
+      };
       const payload = {
         siteName: form.siteName,
         tagline: form.tagline,
@@ -81,11 +159,7 @@ export default function AdminSiteContent() {
         },
       };
       const updated = await api.admin.updateSiteContent(payload);
-      setForm({
-        ...updated,
-        heroSlides: JSON.stringify(updated.heroSlides || [], null, 2),
-        batchTimings: JSON.stringify(updated.batchTimings || { onlineWeekday: [], onlineWeekend: [], offlineWeekday: [], offlineWeekend: [] }, null, 2),
-      });
+      setForm(toForm(updated));
       setSavedAt(new Date());
     } catch (err) {
       setError(err.message);
@@ -231,18 +305,93 @@ export default function AdminSiteContent() {
           </div>
         </div>
 
-        <div className="form-group">
-          <label>
-            Hero Slides JSON (array of{' '}
-            {'{ type, heading, subheading, description, highlights[], imageUrl, videoUrl, ctaText, ctaSubtext, ctaLink }'})
-          </label>
-          <textarea
-            className="form-control admin-json"
-            rows={10}
-            value={form.heroSlides}
-            onChange={(e) => setField('heroSlides', e.target.value)}
-          />
-        </div>
+        <h3 className="mt-24">Hero Slides</h3>
+        <p className="muted" style={{ fontSize: 13.5 }}>
+          These rotate on the homepage banner, in order.
+        </p>
+        {uploadError && <div className="form-alert error">{uploadError}</div>}
+        {form.heroSlides.map((s, i) => (
+          <div className="card mb-12" key={i}>
+            <h4>Slide {i + 1}</h4>
+            <div className="grid grid-2">
+              <div className="form-group">
+                <label>Type</label>
+                <select className="form-control" value={s.type} onChange={(e) => updateSlide(i, 'type', e.target.value)}>
+                  <option value="image">Image</option>
+                  <option value="video">Video</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Heading</label>
+                <input className="form-control" value={s.heading} onChange={(e) => updateSlide(i, 'heading', e.target.value)} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label>Subheading</label>
+              <input className="form-control" value={s.subheading} onChange={(e) => updateSlide(i, 'subheading', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Description</label>
+              <textarea
+                className="form-control"
+                rows={2}
+                value={s.description}
+                onChange={(e) => updateSlide(i, 'description', e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label>Highlights (one per line)</label>
+              <textarea
+                className="form-control"
+                rows={3}
+                value={s.highlightsText}
+                onChange={(e) => updateSlide(i, 'highlightsText', e.target.value)}
+              />
+            </div>
+            <div className="grid grid-2">
+              <div className="form-group">
+                <label>Image URL</label>
+                {s.imageUrl && (
+                  <img
+                    src={s.imageUrl}
+                    alt=""
+                    style={{ display: 'block', width: 140, height: 90, objectFit: 'cover', borderRadius: 8, marginBottom: 8 }}
+                  />
+                )}
+                <input className="form-control" value={s.imageUrl} onChange={(e) => updateSlide(i, 'imageUrl', e.target.value)} />
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span className="muted" style={{ fontSize: 13 }}>or upload directly:</span>
+                  <input type="file" accept="image/*" disabled={uploading} onChange={(e) => handleSlideImageUpload(e, i)} />
+                  {uploading && <span className="spinner" />}
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Video URL (embed link, only used when Type is Video)</label>
+                <input className="form-control" value={s.videoUrl} onChange={(e) => updateSlide(i, 'videoUrl', e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-2">
+              <div className="form-group">
+                <label>CTA Button Text</label>
+                <input className="form-control" value={s.ctaText} onChange={(e) => updateSlide(i, 'ctaText', e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label>CTA Link</label>
+                <input className="form-control" value={s.ctaLink} onChange={(e) => updateSlide(i, 'ctaLink', e.target.value)} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label>CTA Subtext (optional, shown under the button)</label>
+              <input className="form-control" value={s.ctaSubtext} onChange={(e) => updateSlide(i, 'ctaSubtext', e.target.value)} />
+            </div>
+            <button type="button" className="btn btn-sm btn-navy" onClick={() => removeSlide(i)}>
+              Remove Slide
+            </button>
+          </div>
+        ))}
+        <button type="button" className="btn btn-sm mb-24" onClick={addSlide}>
+          + Add Slide
+        </button>
 
         <h3 className="mt-24">Classroom Experience Video</h3>
         <div className="form-group">
@@ -256,14 +405,43 @@ export default function AdminSiteContent() {
         </div>
 
         <h3 className="mt-24">Batch Timings (shown once sitewide)</h3>
-        <div className="form-group">
-          <label>Batch Timings JSON ({'{ onlineWeekday, onlineWeekend, offlineWeekday, offlineWeekend: string[] }'})</label>
-          <textarea
-            className="form-control admin-json"
-            rows={8}
-            value={form.batchTimings}
-            onChange={(e) => setField('batchTimings', e.target.value)}
-          />
+        <div className="grid grid-2">
+          <div className="form-group">
+            <label>Online - Weekday (one per line)</label>
+            <textarea
+              className="form-control"
+              rows={4}
+              value={form.batchTimingsOnlineWeekday}
+              onChange={(e) => setField('batchTimingsOnlineWeekday', e.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label>Online - Weekend (one per line)</label>
+            <textarea
+              className="form-control"
+              rows={4}
+              value={form.batchTimingsOnlineWeekend}
+              onChange={(e) => setField('batchTimingsOnlineWeekend', e.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label>Offline - Weekday (one per line)</label>
+            <textarea
+              className="form-control"
+              rows={4}
+              value={form.batchTimingsOfflineWeekday}
+              onChange={(e) => setField('batchTimingsOfflineWeekday', e.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label>Offline - Weekend (one per line)</label>
+            <textarea
+              className="form-control"
+              rows={4}
+              value={form.batchTimingsOfflineWeekend}
+              onChange={(e) => setField('batchTimingsOfflineWeekend', e.target.value)}
+            />
+          </div>
         </div>
 
         <button className="btn btn-block" disabled={saving}>

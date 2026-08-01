@@ -23,6 +23,7 @@ import AdminLogin from './pages/admin/AdminLogin.jsx';
 import AdminLayout from './pages/admin/AdminLayout.jsx';
 import AdminCourses from './pages/admin/AdminCourses.jsx';
 import AdminSiteContent from './pages/admin/AdminSiteContent.jsx';
+import AdminHomePage from './pages/admin/AdminHomePage.jsx';
 import AdminGallery from './pages/admin/AdminGallery.jsx';
 import AdminBlog from './pages/admin/AdminBlog.jsx';
 import AdminReviews from './pages/admin/AdminReviews.jsx';
@@ -69,6 +70,7 @@ export default function App() {
               <Route index element={<AdminCourses />} />
               <Route path="courses" element={<AdminCourses />} />
               <Route path="site-content" element={<AdminSiteContent />} />
+              <Route path="home-page" element={<AdminHomePage />} />
               <Route path="gallery" element={<AdminGallery />} />
               <Route path="blog" element={<AdminBlog />} />
               <Route path="reviews" element={<AdminReviews />} />

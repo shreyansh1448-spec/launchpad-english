@@ -146,6 +146,7 @@ function serializeSiteContent(row) {
     heroSlides: JSON.parse(row.hero_slides),
     batchTimings: JSON.parse(row.batch_timings),
     stats: JSON.parse(row.stats),
+    homeContent: JSON.parse(row.home_content || '{}'),
   };
 }
 

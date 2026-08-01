@@ -159,5 +159,6 @@ CREATE TABLE site_content (
   social TEXT NOT NULL DEFAULT '{"facebook":"","instagram":"","linkedin":"","youtube":"","x":""}',
   hero_slides TEXT NOT NULL DEFAULT '[]',
   batch_timings TEXT NOT NULL DEFAULT '{"onlineWeekday":[],"onlineWeekend":[],"offlineWeekday":[],"offlineWeekend":[]}',
-  stats TEXT NOT NULL DEFAULT '{"studentsCount":10000,"yearsExperience":15,"successRate":100,"coursesCount":0}'
+  stats TEXT NOT NULL DEFAULT '{"studentsCount":10000,"yearsExperience":15,"successRate":100,"coursesCount":0}',
+  home_content TEXT NOT NULL DEFAULT '{}'  -- per-section Home page copy (eyebrow/heading/text/lists); empty = use hardcoded defaults in Home.jsx
 );

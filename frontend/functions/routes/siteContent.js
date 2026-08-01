@@ -24,6 +24,7 @@ const FIELD_MAP = {
   heroSlides: ['hero_slides', true],
   batchTimings: ['batch_timings', true],
   stats: ['stats', true],
+  homeContent: ['home_content', true],
 };
 
 async function getOrCreate(db) {

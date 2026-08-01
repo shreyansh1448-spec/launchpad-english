@@ -5,6 +5,7 @@ import { api } from '../../api.js';
 const ADMIN_NAV = [
   { to: '/admin/courses', label: 'Courses' },
   { to: '/admin/site-content', label: 'Site Content' },
+  { to: '/admin/home-page', label: 'Home Page' },
   { to: '/admin/gallery', label: 'Gallery' },
   { to: '/admin/blog', label: 'Blogs' },
   { to: '/admin/reviews', label: 'Reviews' },
