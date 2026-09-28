@@ -174,6 +174,7 @@ export default function Home() {
   const [content, setContent] = useState(null);
   const [batches, setBatches] = useState([]);
   const [modalState, setModalState] = useState(null); // { course, mode }
+  const [courseMode, setCourseMode] = useState('online'); // courses block shows one mode at a time
   const location = useLocation();
 
   useEffect(() => {
@@ -185,6 +186,7 @@ export default function Home() {
   useEffect(() => {
     if (location.hash) {
       const id = location.hash.slice(1);
+      if (id === 'learn-online' || id === 'learn-offline') setCourseMode(id.slice(6));
       const t = setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }), 150);
       return () => clearTimeout(t);
     }
@@ -196,6 +198,8 @@ export default function Home() {
   const coursesCount = content?.stats?.coursesCount || courses.length || 5;
 
   const home = mergeHome(content?.homeContent);
+  const modeBlock = courseMode === 'online' ? home.learnOnline : home.learnOffline;
+  const modeCourses = courses.filter((c) => c.featured && offersMode(c, courseMode));
 
   return (
     <>
@@ -311,7 +315,7 @@ export default function Home() {
         </div>
       </Reveal>
 
-      {/* Courses - online and offline kept in separate blocks */}
+      {/* Courses - one block, switched between online and offline */}
       <section className="section section-alt" id="courses">
         <div className="container">
           <div className="section-head">
@@ -320,31 +324,47 @@ export default function Home() {
             <p>{home.coursesPreview.text}</p>
           </div>
 
-          {['online', 'offline'].map((mode) => {
-            const block = mode === 'online' ? home.learnOnline : home.learnOffline;
-            const list = courses.filter((c) => c.featured && offersMode(c, mode));
-            return (
-              <Reveal className={`learn-block learn-block-${mode}`} key={mode} id={`learn-${mode}`}>
-                <div className="learn-block-head">
-                  <div>
-                    <span className={`cc-mode-badge cc-mode-${mode} cc-mode-badge-inline`}>
-                      <i className={`fas ${MODE_META[mode].icon}`} /> {MODE_META[mode].badge}
-                    </span>
-                    <h2>{block.heading}</h2>
-                    <p>{block.text}</p>
+          <Reveal className={`learn-block learn-block-${courseMode}`} id={`learn-${courseMode}`}>
+            <div className="learn-block-head">
+              <div>
+                <div className="learn-badge-row">
+                  <span className={`cc-mode-badge cc-mode-${courseMode} cc-mode-badge-inline`}>
+                    <i className={`fas ${MODE_META[courseMode].icon}`} /> {MODE_META[courseMode].badge}
+                  </span>
+                  <div className="learn-toggle" role="tablist" aria-label="Choose online or offline courses">
+                    {['online', 'offline'].map((m) => (
+                      <button
+                        type="button"
+                        role="tab"
+                        key={m}
+                        aria-selected={courseMode === m}
+                        className={`learn-toggle-btn learn-toggle-${m}${courseMode === m ? ' is-active' : ''}`}
+                        onClick={() => setCourseMode(m)}
+                      >
+                        {MODE_META[m].label}
+                      </button>
+                    ))}
                   </div>
-                  <Link className="btn" to={MODE_META[mode].listingPath}>
-                    {block.ctaText} <i className="fas fa-arrow-right" />
-                  </Link>
                 </div>
-                <div className="cc-grid cc-grid-scroll">
-                  {list.map((c) => (
-                    <CourseListingCard key={c.slug} course={c} mode={mode} compact onEnroll={(course) => setModalState({ course, mode })} />
-                  ))}
-                </div>
-              </Reveal>
-            );
-          })}
+                <h2>{modeBlock.heading}</h2>
+                <p>{modeBlock.text}</p>
+              </div>
+              <Link className="btn" to={MODE_META[courseMode].listingPath}>
+                {modeBlock.ctaText} <i className="fas fa-arrow-right" />
+              </Link>
+            </div>
+            <div className="cc-grid cc-grid-scroll learn-fade" key={courseMode}>
+              {modeCourses.map((c) => (
+                <CourseListingCard
+                  key={c.slug}
+                  course={c}
+                  mode={courseMode}
+                  compact
+                  onEnroll={(course) => setModalState({ course, mode: courseMode })}
+                />
+              ))}
+            </div>
+          </Reveal>
         </div>
       </section>
 
