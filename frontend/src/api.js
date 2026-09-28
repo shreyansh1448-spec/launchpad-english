@@ -37,10 +37,19 @@ function adminRequest(path, options = {}) {
   return request(path, { ...options, headers: { Authorization: `Bearer ${getAdminToken()}`, ...(options.headers || {}) } });
 }
 
+function readAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Could not read file'));
+    reader.readAsDataURL(file);
+  });
+}
 
 export const api = {
-  getCourses: () => request('/courses'),
-  getCourse: (slug) => request(`/courses/${slug}`),
+  getCourses: (mode) => request(`/courses${mode ? `?mode=${encodeURIComponent(mode)}` : ''}`),
+  getCourse: (slug) => request(`/courses/${encodeURIComponent(slug)}`),
+  getBatches: (mode) => request(`/batches${mode ? `?mode=${encodeURIComponent(mode)}` : ''}`),
 
   sendOtp: (phone) => request('/otp/send', { method: 'POST', body: JSON.stringify({ phone }) }),
   verifyOtp: (phone, otp) => request('/otp/verify', { method: 'POST', body: JSON.stringify({ phone, otp }) }),
@@ -79,28 +88,31 @@ export const api = {
     changePassword: (currentPassword, newPassword) =>
       adminRequest('/admin/change-password', { method: 'PUT', body: JSON.stringify({ currentPassword, newPassword }) }),
 
+    getDashboard: () => adminRequest('/dashboard'),
+
     listCourses: () => adminRequest('/courses/admin/all'),
+    getCourse: (id) => adminRequest(`/courses/admin/id/${id}`),
     createCourse: (payload) => adminRequest('/courses', { method: 'POST', body: JSON.stringify(payload) }),
-    updateCourse: (slug, payload) => adminRequest(`/courses/${slug}`, { method: 'PUT', body: JSON.stringify(payload) }),
-    // PDFs are read client-side and sent as a base64 data URL (JSON), rather
-    // than multipart to disk - Vercel's serverless filesystem is read-only,
-    // so on-disk uploads aren't an option there. Capped at 3MB.
-    uploadResource: (slug, title, file) => {
+    updateCourse: (id, payload) => adminRequest(`/courses/admin/id/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    duplicateCourse: (id) => adminRequest(`/courses/admin/id/${id}/duplicate`, { method: 'POST' }),
+    deleteCourse: (id) => adminRequest(`/courses/admin/id/${id}`, { method: 'DELETE' }),
+    // PDFs are read client-side and sent as a base64 data URL (JSON). Capped at 3MB.
+    uploadResource: (id, title, file) => {
       if (file.size > 3 * 1024 * 1024) return Promise.reject(new Error('PDF must be under 3MB'));
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () =>
-          adminRequest(`/courses/${slug}/resources`, {
-            method: 'POST',
-            body: JSON.stringify({ title, dataUrl: reader.result }),
-          })
-            .then(resolve)
-            .catch(reject);
-        reader.onerror = () => reject(new Error('Could not read file'));
-        reader.readAsDataURL(file);
-      });
+      return readAsDataUrl(file).then((dataUrl) =>
+        adminRequest(`/courses/admin/id/${id}/resources`, { method: 'POST', body: JSON.stringify({ title, dataUrl }) })
+      );
     },
-    deleteResource: (slug, resourceId) => adminRequest(`/courses/${slug}/resources/${resourceId}`, { method: 'DELETE' }),
+    deleteResource: (id, resourceId) => adminRequest(`/courses/admin/id/${id}/resources/${resourceId}`, { method: 'DELETE' }),
+
+    listBatches: (courseId) => adminRequest(`/batches/admin/all${courseId ? `?courseId=${encodeURIComponent(courseId)}` : ''}`),
+    createBatch: (payload) => adminRequest('/batches', { method: 'POST', body: JSON.stringify(payload) }),
+    updateBatch: (id, payload) => adminRequest(`/batches/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    deleteBatch: (id) => adminRequest(`/batches/${id}`, { method: 'DELETE' }),
+
+    // Images are resized in the browser first (see lib/image.js), then stored
+    // in D1 and served from /api/media/:id.
+    uploadMedia: (dataUrl, filename) => adminRequest('/media', { method: 'POST', body: JSON.stringify({ dataUrl, filename }) }),
 
     getSiteContent: () => request('/site-content'),
     updateSiteContent: (payload) => adminRequest('/site-content', { method: 'PUT', body: JSON.stringify(payload) }),
@@ -118,7 +130,11 @@ export const api = {
 
     listLeads: () => adminRequest('/leads'),
 
-    listOrders: (search) => adminRequest(`/payment/admin/orders${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+    // filters: { search, mode, course, status }
+    listOrders: (filters = {}) => {
+      const qs = new URLSearchParams(Object.entries(filters).filter(([, v]) => v)).toString();
+      return adminRequest(`/payment/admin/orders${qs ? `?${qs}` : ''}`);
+    },
     updateOrderNotes: (id, notes) => adminRequest(`/payment/admin/orders/${id}/notes`, { method: 'PUT', body: JSON.stringify({ notes }) }),
     createManualOrder: (payload) => adminRequest('/payment/admin/manual-order', { method: 'POST', body: JSON.stringify(payload) }),
 

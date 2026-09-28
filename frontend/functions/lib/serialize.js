@@ -8,34 +8,75 @@ function toBool(v) {
   return !!v;
 }
 
-function serializeCourse(row, resourceRows = []) {
-  return {
+function parseJson(text, fallback) {
+  try {
+    return text ? JSON.parse(text) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+// `full` = false drops the heavy detail-only fields (PDF resources are
+// base64 data URLs) for listing endpoints.
+function serializeCourse(row, resourceRows = [], { full = true } = {}) {
+  const course = {
     _id: row.id,
     slug: row.slug,
     title: row.title,
+    category: row.category || '',
     tagline: row.tagline,
+    shortDescription: row.short_description || '',
     duration: row.duration,
     level: row.level,
     overview: row.overview,
-    highlights: JSON.parse(row.highlights),
-    whoShouldJoin: JSON.parse(row.who_should_join),
-    syllabus: JSON.parse(row.syllabus),
-    dailyPattern: JSON.parse(row.daily_pattern),
-    outcomes: JSON.parse(row.outcomes),
-    batchTimings: JSON.parse(row.batch_timings),
-    faqs: JSON.parse(row.faqs),
-    images: JSON.parse(row.images),
+    highlights: parseJson(row.highlights, []),
+    whoShouldJoin: parseJson(row.who_should_join, []),
+    syllabus: parseJson(row.syllabus, []),
+    dailyPattern: parseJson(row.daily_pattern, []),
+    outcomes: parseJson(row.outcomes, []),
+    faqs: parseJson(row.faqs, []),
+    details: parseJson(row.details, {}),
+    images: parseJson(row.images, []),
     thumbnail: row.thumbnail,
-    resources: resourceRows.map((r) => ({ _id: r.id, title: r.title, url: r.url })),
+    heroImage: row.hero_image || '',
+    promoVideo: row.promo_video || '',
+    instructor: parseJson(row.instructor, {}),
+    modes: { online: toBool(row.offer_online ?? 1), offline: toBool(row.offer_offline ?? 1) },
     pricing: {
       online: { mrp: row.pricing_online_mrp, offer: row.pricing_online_offer },
       offline: { mrp: row.pricing_offline_mrp, offer: row.pricing_offline_offer },
     },
+    currency: row.currency || 'INR',
+    modeContent: parseJson(row.mode_content, {}),
+    seo: parseJson(row.seo, {}),
+    legacySlugs: parseJson(row.legacy_slugs, []),
     displayOrder: row.display_order,
     active: toBool(row.active),
     featured: toBool(row.featured),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+  if (full) {
+    course.fullDescription = row.full_description || '';
+    course.resources = resourceRows.map((r) => ({ _id: r.id, title: r.title, url: r.url }));
+  }
+  return course;
+}
+
+function serializeBatch(row) {
+  return {
+    _id: row.id,
+    courseId: row.course_id || null,
+    mode: row.mode,
+    dayType: row.day_type,
+    timeLabel: row.time_label,
+    classroom: row.classroom,
+    seatsAvailable: row.seats_available ?? null,
+    startDate: row.start_date,
+    status: row.status,
+    displayOrder: row.display_order,
+    // Bookable = open/filling and not sold out.
+    bookable: (row.status === 'open' || row.status === 'filling') && (row.seats_available === null || row.seats_available > 0),
   };
 }
 
@@ -74,6 +115,9 @@ function serializeOrder(row) {
     razorpaySignature: row.razorpay_signature,
     status: row.status,
     notes: row.notes,
+    batchId: row.batch_id || null,
+    batchLabel: row.batch_label || '',
+    confirmationSent: toBool(row.confirmation_sent),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -151,7 +195,9 @@ function serializeSiteContent(row) {
 }
 
 export {
+  parseJson,
   serializeCourse,
+  serializeBatch,
   serializeGallery,
   serializeOrder,
   serializeReview,

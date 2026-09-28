@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
 
 function toForm(c) {
@@ -16,10 +17,6 @@ function toForm(c) {
       ctaSubtext: s.ctaSubtext || '',
       ctaLink: s.ctaLink || '',
     })),
-    batchTimingsOnlineWeekday: (c.batchTimings?.onlineWeekday || []).join('\n'),
-    batchTimingsOnlineWeekend: (c.batchTimings?.onlineWeekend || []).join('\n'),
-    batchTimingsOfflineWeekday: (c.batchTimings?.offlineWeekday || []).join('\n'),
-    batchTimingsOfflineWeekend: (c.batchTimings?.offlineWeekend || []).join('\n'),
     stats: { coursesCount: 0, ...c.stats },
   };
 }
@@ -121,13 +118,6 @@ export default function AdminSiteContent() {
         ctaSubtext: s.ctaSubtext,
         ctaLink: s.ctaLink,
       }));
-      const splitLines = (text) => text.split('\n').map((t) => t.trim()).filter(Boolean);
-      const batchTimings = {
-        onlineWeekday: splitLines(form.batchTimingsOnlineWeekday),
-        onlineWeekend: splitLines(form.batchTimingsOnlineWeekend),
-        offlineWeekday: splitLines(form.batchTimingsOfflineWeekday),
-        offlineWeekend: splitLines(form.batchTimingsOfflineWeekend),
-      };
       const payload = {
         siteName: form.siteName,
         tagline: form.tagline,
@@ -143,7 +133,6 @@ export default function AdminSiteContent() {
         workingHours: form.workingHours,
         heroSlides,
         youtubeUrl: form.youtubeUrl,
-        batchTimings,
         stats: {
           studentsCount: Number(form.stats.studentsCount),
           yearsExperience: Number(form.stats.yearsExperience),
@@ -404,45 +393,9 @@ export default function AdminSiteContent() {
           />
         </div>
 
-        <h3 className="mt-24">Batch Timings (shown once sitewide)</h3>
-        <div className="grid grid-2">
-          <div className="form-group">
-            <label>Online - Weekday (one per line)</label>
-            <textarea
-              className="form-control"
-              rows={4}
-              value={form.batchTimingsOnlineWeekday}
-              onChange={(e) => setField('batchTimingsOnlineWeekday', e.target.value)}
-            />
-          </div>
-          <div className="form-group">
-            <label>Online - Weekend (one per line)</label>
-            <textarea
-              className="form-control"
-              rows={4}
-              value={form.batchTimingsOnlineWeekend}
-              onChange={(e) => setField('batchTimingsOnlineWeekend', e.target.value)}
-            />
-          </div>
-          <div className="form-group">
-            <label>Offline - Weekday (one per line)</label>
-            <textarea
-              className="form-control"
-              rows={4}
-              value={form.batchTimingsOfflineWeekday}
-              onChange={(e) => setField('batchTimingsOfflineWeekday', e.target.value)}
-            />
-          </div>
-          <div className="form-group">
-            <label>Offline - Weekend (one per line)</label>
-            <textarea
-              className="form-control"
-              rows={4}
-              value={form.batchTimingsOfflineWeekend}
-              onChange={(e) => setField('batchTimingsOfflineWeekend', e.target.value)}
-            />
-          </div>
-        </div>
+        <p className="form-hint mt-24">
+          Batch timings are managed on the <Link to="/admin/batches">Batch Timings</Link> page.
+        </p>
 
         <button className="btn btn-block" disabled={saving}>
           {saving ? <span className="spinner" /> : 'Save Changes'}

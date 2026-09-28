@@ -1,27 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { api } from '../api.js';
+import { MODE_META, coursePath, offersMode, shortTitle } from '../../shared/course.js';
 
 export default function Header() {
   const [open, setOpen] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
   const [courses, setCourses] = useState([]);
   const location = useLocation();
-  const navigate = useNavigate();
 
   useEffect(() => {
     api.getCourses().then(setCourses).catch(() => setCourses([]));
   }, []);
 
-  function scrollOrNavigate(e, anchor) {
-    e.preventDefault();
-    setOpen(false);
-    if (location.pathname === '/') {
-      document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth' });
-    } else {
-      navigate(`/#${anchor}`);
-    }
-  }
+  // Close the mobile menu whenever the route changes.
+  useEffect(() => setOpen(false), [location.pathname]);
 
   return (
     <>
@@ -57,7 +50,7 @@ export default function Header() {
               Home
             </NavLink>
             <NavLink to="/about" onClick={() => setOpen(false)} className={({ isActive }) => (isActive ? 'active' : '')}>
-              About Us
+              About
             </NavLink>
 
             <CourseDropdown mode="online" label="Online Courses" courses={courses} onNavigate={() => setOpen(false)} />
@@ -66,25 +59,19 @@ export default function Header() {
             <NavLink to="/counselling" onClick={() => setOpen(false)} className={({ isActive }) => (isActive ? 'active' : '')}>
               Counselling
             </NavLink>
-            <a href="/#batch-timings" onClick={(e) => scrollOrNavigate(e, 'batch-timings')}>
-              Batch Timings
-            </a>
-            <a href="/#gallery" onClick={(e) => scrollOrNavigate(e, 'gallery')}>
-              Gallery
-            </a>
-            <NavLink to="/faqs" onClick={() => setOpen(false)} className={({ isActive }) => (isActive ? 'active' : '')}>
-              FAQs
-            </NavLink>
             <NavLink to="/blog" onClick={() => setOpen(false)} className={({ isActive }) => (isActive ? 'active' : '')}>
               Blogs
+            </NavLink>
+            <NavLink to="/faqs" onClick={() => setOpen(false)} className={({ isActive }) => (isActive ? 'active' : '')}>
+              FAQs
             </NavLink>
             <NavLink to="/contact" onClick={() => setOpen(false)} className={({ isActive }) => (isActive ? 'active' : '')}>
               Contact
             </NavLink>
 
-            <a href="/#courses" className="btn" onClick={(e) => scrollOrNavigate(e, 'courses')}>
+            <Link to="/#courses" className="btn" onClick={() => setOpen(false)}>
               Enroll Now
-            </a>
+            </Link>
           </nav>
 
           <button className="nav-toggle" onClick={() => setOpen((o) => !o)} aria-label="Toggle menu">
@@ -97,13 +84,14 @@ export default function Header() {
 }
 
 // Click-to-toggle dropdown (works the same on desktop and mobile) listing
-// all courses for a given mode; each item scrolls straight to that course's
-// card on the Online/Offline Courses listing page instead of opening a new page.
+// only the courses offered in this mode - online and offline never mix.
+// Each item links to that course's own page.
 function CourseDropdown({ mode, label, courses, onNavigate }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-  const navigate = useNavigate();
   const location = useLocation();
+  const items = courses.filter((c) => offersMode(c, mode));
+  const active = location.pathname.startsWith(MODE_META[mode].listingPath);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -113,27 +101,32 @@ function CourseDropdown({ mode, label, courses, onNavigate }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  function goToCourse(slug) {
+  useEffect(() => setOpen(false), [location.pathname]);
+
+  function done() {
     setOpen(false);
     onNavigate();
-    const path = `/${mode}-courses`;
-    if (location.pathname === path) {
-      document.getElementById(slug)?.scrollIntoView({ behavior: 'smooth' });
-    } else {
-      navigate(`${path}#${slug}`);
-    }
   }
 
   return (
     <div className={`nav-dropdown ${open ? 'open' : ''}`} ref={ref}>
-      <button type="button" className="nav-dropdown-trigger" onClick={() => setOpen((o) => !o)}>
+      <button
+        type="button"
+        className={`nav-dropdown-trigger ${active ? 'active' : ''}`}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="true"
+      >
         {label} <span className="nav-dropdown-caret">▾</span>
       </button>
       <div className="nav-dropdown-menu">
-        {courses.map((c) => (
-          <button type="button" key={c.slug} onClick={() => goToCourse(c.slug)}>
-            {c.title.replace(/ Course$| Program.*$/, '')}
-          </button>
+        <Link to={MODE_META[mode].listingPath} className="nav-dropdown-all" onClick={done}>
+          <i className={`fas ${MODE_META[mode].icon}`} /> All {label}
+        </Link>
+        {items.map((c) => (
+          <Link key={c.slug} to={coursePath(mode, c.slug)} onClick={done}>
+            {shortTitle(c.title)}
+          </Link>
         ))}
       </div>
     </div>

@@ -52,7 +52,48 @@ CREATE TABLE courses (
   active INTEGER NOT NULL DEFAULT 1,
   featured INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  -- Course CMS fields (see db/migrations/0002_course_cms.sql)
+  category TEXT NOT NULL DEFAULT '',
+  short_description TEXT NOT NULL DEFAULT '',
+  full_description TEXT NOT NULL DEFAULT '',    -- rich-text HTML
+  offer_online INTEGER NOT NULL DEFAULT 1,
+  offer_offline INTEGER NOT NULL DEFAULT 1,
+  currency TEXT NOT NULL DEFAULT 'INR',
+  details TEXT NOT NULL DEFAULT '{}',           -- JSON {numClasses,classDuration,assessments,mockTests,studyMaterial,certificate}
+  hero_image TEXT NOT NULL DEFAULT '',
+  promo_video TEXT NOT NULL DEFAULT '',
+  instructor TEXT NOT NULL DEFAULT '{}',        -- JSON {name,title,bio,image}
+  mode_content TEXT NOT NULL DEFAULT '{}',      -- JSON {online:{headline,intro},offline:{headline,intro}}
+  seo TEXT NOT NULL DEFAULT '{}',               -- JSON {online:{...},offline:{...},customSchema}
+  legacy_slugs TEXT NOT NULL DEFAULT '[]'       -- JSON array, old slugs that 301 to this course
+);
+
+-- course_id NULL = a batch slot offered for every course in that mode.
+CREATE TABLE batches (
+  id TEXT PRIMARY KEY,
+  course_id TEXT REFERENCES courses(id) ON DELETE CASCADE,
+  mode TEXT NOT NULL CHECK (mode IN ('online', 'offline')),
+  day_type TEXT NOT NULL DEFAULT 'weekday' CHECK (day_type IN ('weekday', 'weekend', 'daily')),
+  time_label TEXT NOT NULL,
+  classroom TEXT NOT NULL DEFAULT '',
+  seats_available INTEGER,            -- NULL = not tracked; decremented on each paid enrollment
+  start_date TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'filling', 'full', 'closed')),
+  display_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX idx_batches_course_mode ON batches(course_id, mode);
+
+-- Admin-uploaded images, served from /api/media/:id.
+CREATE TABLE media (
+  id TEXT PRIMARY KEY,
+  filename TEXT NOT NULL DEFAULT '',
+  mime TEXT NOT NULL,
+  size INTEGER NOT NULL DEFAULT 0,
+  data TEXT NOT NULL,                 -- base64
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
 CREATE TABLE course_resources (
@@ -99,8 +140,12 @@ CREATE TABLE orders (
   status TEXT NOT NULL DEFAULT 'created' CHECK (status IN ('created', 'paid', 'failed')),
   notes TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  batch_id TEXT,
+  batch_label TEXT NOT NULL DEFAULT '',
+  confirmation_sent INTEGER NOT NULL DEFAULT 0
 );
+CREATE INDEX idx_orders_created_at ON orders(created_at);
 CREATE INDEX idx_orders_phone ON orders(phone);
 CREATE INDEX idx_orders_course_slug ON orders(course_slug);
 CREATE INDEX idx_orders_razorpay_order_id ON orders(razorpay_order_id);

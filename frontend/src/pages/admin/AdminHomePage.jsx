@@ -55,8 +55,18 @@ const DEFAULT_HOME = {
   },
   coursesPreview: {
     eyebrow: 'Our Courses',
-    heading: 'Choose Your Course',
-    text: 'Five specialised programs, available both online and offline.',
+    heading: 'Choose How You Want to Learn',
+    text: 'Every program runs live online and in our South Delhi classroom - each with its own batches and pricing.',
+  },
+  learnOnline: {
+    heading: 'Learn Online',
+    text: 'Build your English skills from anywhere with live online classes.',
+    ctaText: 'Explore Online Courses',
+  },
+  learnOffline: {
+    heading: 'Learn Offline',
+    text: 'Join our classroom programs in South Delhi.',
+    ctaText: 'Explore Offline Courses',
   },
   batchTimingsSection: {
     eyebrow: 'Plan Your Schedule',
@@ -147,6 +157,8 @@ function toForm(content) {
     courseFeatures: merge('courseFeatures'),
     services: merge('services'),
     coursesPreview: merge('coursesPreview'),
+    learnOnline: merge('learnOnline'),
+    learnOffline: merge('learnOffline'),
     batchTimingsSection: merge('batchTimingsSection'),
     counselling: { ...counselling, whatYouGetBulletsText: counselling.whatYouGetBullets.join('\n') },
     achievements: { ...achievements, bulletsText: achievements.bullets.join('\n') },
@@ -176,6 +188,8 @@ function toPayload(form) {
     courseFeatures: { eyebrow: form.courseFeatures.eyebrow, heading: form.courseFeatures.heading, items: form.courseFeatures.items.filter((i) => i.icon || i.title) },
     services: { eyebrow: form.services.eyebrow, heading: form.services.heading, text: form.services.text, items: form.services.items.filter((i) => i.icon || i.title) },
     coursesPreview: { ...form.coursesPreview },
+    learnOnline: { ...form.learnOnline },
+    learnOffline: { ...form.learnOffline },
     batchTimingsSection: { ...form.batchTimingsSection },
     counselling: {
       eyebrow: form.counselling.eyebrow,
@@ -405,7 +419,20 @@ export default function AdminHomePage() {
           <TextField label="Heading" value={form.coursesPreview.heading} onChange={(v) => setField('coursesPreview', 'heading', v)} />
         </div>
         <TextAreaField label="Paragraph" value={form.coursesPreview.text} onChange={(v) => setField('coursesPreview', 'text', v)} rows={2} />
-        <p className="form-hint">The course cards themselves are managed on the Courses page.</p>
+        <div className="grid grid-2">
+          {[
+            ['learnOnline', 'Learn Online Block'],
+            ['learnOffline', 'Learn Offline Block'],
+          ].map(([key, label]) => (
+            <div className="card" key={key}>
+              <h4>{label}</h4>
+              <TextField label="Heading" value={form[key].heading} onChange={(v) => setField(key, 'heading', v)} />
+              <TextAreaField label="Text" value={form[key].text} onChange={(v) => setField(key, 'text', v)} rows={2} />
+              <TextField label="Button Text" value={form[key].ctaText} onChange={(v) => setField(key, 'ctaText', v)} />
+            </div>
+          ))}
+        </div>
+        <p className="form-hint">The course cards themselves come from the Courses page - only published, featured courses offered in that mode appear.</p>
 
         <h3 className="mt-24">Batch Timings Section Header</h3>
         <div className="grid grid-2">

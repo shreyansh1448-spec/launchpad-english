@@ -6,22 +6,41 @@ Pages Functions as the API and D1 as the database.
 
 ## What's included
 
-- **Home** - hero slider, about section, services, course preview,
+- **Home** - hero slider, about section, services, separate Learn Online /
+  Learn Offline course sections,
   database-driven photo gallery, combined Google Maps + Google reviews
   section, and site-wide verified-purchase reviews.
-- **Offline Courses** / **Online Courses** - 5 detailed course sections each
-  (Basic Spoken English, Advanced Spoken English, Complete Spoken English,
-  IELTS Preparation, PTE Preparation), full syllabus, batch timings, pricing
-  with strike-through MRP + offer price, and a Purchase button per course.
+- **Online Courses** (`/online-courses`) and **Offline Courses**
+  (`/offline-courses`) - two completely separate catalogs. Each lists only
+  the courses offered in that mode, with only that mode's price.
+- **One page per course per mode** - `/online-courses/<slug>` and
+  `/offline-courses/<slug>` (e.g. `/online-courses/ielts-preparation`), all
+  rendered from the database through one template (`CourseDetailView`):
+  hero with price/discount/CTAs, curriculum, features, course details, batch
+  timings, gallery, FAQs, reviews and related courses in the same mode.
+- **SEO** - course and listing pages get their own `<title>`, meta
+  description, canonical, Open Graph tags and Course / FAQPage /
+  BreadcrumbList JSON-LD injected server-side (`functions/lib/seoPage.js`),
+  plus a dynamic `/sitemap.xml` and `/robots.txt`. Renamed slugs 301 to the
+  new URL automatically.
 - **Blog**, **Counselling**, **FAQs**, **Contact** pages.
 - Registration + payment modal: name, phone, email, address, then Razorpay
   Checkout (Razorpay's own flow handles RBI-mandated payment authentication,
   so there's no separate OTP step in the UI).
 - Review system: 5-star rating, name, optional photo, text - gated so only
   someone with a verified (paid) purchase of that course can post.
-- Admin panel (`/admin`) for editing course pricing/content, homepage
-  photos/video/about text, gallery photos, reviews, blog posts, and orders -
-  protected by JWT-based admin login, no redeploy needed for content changes.
+- **Admin CMS** (`/admin`) - dashboard (courses, batches, enrollments,
+  revenue), course table with Add / Edit / Duplicate / Preview / Publish /
+  Unpublish / Delete, and a no-code course editor: course info, online and
+  offline pricing (discount calculated automatically), rich-text
+  description, features, drag-and-drop curriculum (modules + topics), image
+  and video uploads, per-mode SEO, FAQs and batches. Also batch timings,
+  students, orders (search + filters + CSV export), leads, home page, site
+  content, gallery, blog and reviews. No redeploy is needed for any of it.
+- **Payments** - the Razorpay amount is always looked up from the database
+  on the server (never taken from the browser), along with the course, mode
+  and chosen batch; seats go down on each paid enrollment and a confirmation
+  email is sent via Resend.
 
 ## Project structure
 
@@ -29,12 +48,17 @@ Pages Functions as the API and D1 as the database.
 frontend/
   src/               React (Vite) site
   functions/         Cloudflare Pages Functions API (Hono), served at /api/*
-    routes/          courses, gallery, reviews, payment, blog, otp, leads, adminAuth, siteContent
+    routes/          courses, batches, media, dashboard, payment, gallery, reviews,
+                     blog, otp, leads, adminAuth, siteContent
+    online-courses/, offline-courses/   server-rendered SEO for course pages
     lib/             auth (JWT via jose), crypto, razorpay client, resend email
+  shared/            course helpers used by both the app and the Functions
+                     (URLs, pricing, SEO / JSON-LD)
   public/images/     self-hosted photos (testimonials, blog)
   wrangler.toml      Cloudflare Pages project config (D1 + KV bindings)
 db/
-  schema.sql         D1 (SQLite) schema
+  schema.sql         D1 (SQLite) schema (fresh installs)
+  migrations/        one-off upgrades for an existing database
   blog_seed*.sql     WordPress blog import seed data
 ```
 
@@ -56,6 +80,21 @@ wrangler kv namespace create OTP_KV       # copy the printed id into wrangler.to
 wrangler d1 execute launchpad-english --file=../db/schema.sql --local
 wrangler d1 execute launchpad-english --file=../db/schema.sql --remote
 ```
+
+### Upgrading an existing database
+
+The course CMS (separate online/offline pages, batches table, image
+uploads, new course fields) needs one migration on a database created from
+the older schema. It keeps all existing courses, prices, orders, reviews and
+gallery rows, and renames three course slugs to the new URLs (old URLs keep
+working via 301):
+
+```bash
+wrangler d1 execute launchpad-english --file=../db/migrations/0002_course_cms.sql --remote
+```
+
+Run it once (use `--local` for your local dev database), **before** deploying
+the new code.
 
 Set secrets (production):
 

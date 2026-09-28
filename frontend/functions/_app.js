@@ -9,6 +9,9 @@ import galleryRoutes from './routes/gallery.js';
 import siteContentRoutes from './routes/siteContent.js';
 import adminAuthRoutes from './routes/adminAuth.js';
 import blogRoutes from './routes/blog.js';
+import batchesRoutes from './routes/batches.js';
+import mediaRoutes from './routes/media.js';
+import dashboardRoutes from './routes/dashboard.js';
 
 const app = new Hono().basePath('/api');
 
@@ -23,6 +26,9 @@ app.route('/gallery', galleryRoutes);
 app.route('/site-content', siteContentRoutes);
 app.route('/admin', adminAuthRoutes);
 app.route('/blog', blogRoutes);
+app.route('/batches', batchesRoutes);
+app.route('/media', mediaRoutes);
+app.route('/dashboard', dashboardRoutes);
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404));
 app.onError((err, c) => {

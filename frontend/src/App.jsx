@@ -6,9 +6,8 @@ import FloatingContact from './components/FloatingContact.jsx';
 import CounsellingPopup from './components/CounsellingPopup.jsx';
 import Home from './pages/Home.jsx';
 import About from './pages/About.jsx';
-import OnlineCourses from './pages/OnlineCourses.jsx';
-import OfflineCourses from './pages/OfflineCourses.jsx';
-import CourseDetail from './pages/CourseDetail.jsx';
+import CourseListing from './pages/CourseListing.jsx';
+import CourseDetail, { LegacyCourseRedirect } from './pages/CourseDetail.jsx';
 import GalleryPage from './pages/GalleryPage.jsx';
 import Blog from './pages/Blog.jsx';
 import BlogPost from './pages/BlogPost.jsx';
@@ -21,7 +20,11 @@ import CancellationRefundPolicy from './pages/CancellationRefundPolicy.jsx';
 import RequireAdmin from './admin/RequireAdmin.jsx';
 import AdminLogin from './pages/admin/AdminLogin.jsx';
 import AdminLayout from './pages/admin/AdminLayout.jsx';
+import AdminDashboard from './pages/admin/AdminDashboard.jsx';
 import AdminCourses from './pages/admin/AdminCourses.jsx';
+import AdminCourseEditor from './pages/admin/AdminCourseEditor.jsx';
+import AdminBatches from './pages/admin/AdminBatches.jsx';
+import AdminStudents from './pages/admin/AdminStudents.jsx';
 import AdminSiteContent from './pages/admin/AdminSiteContent.jsx';
 import AdminHomePage from './pages/admin/AdminHomePage.jsx';
 import AdminGallery from './pages/admin/AdminGallery.jsx';
@@ -46,14 +49,16 @@ export default function App() {
 
   return (
     <>
-      <Header />
+      {!isAdmin && <Header />}
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
-          <Route path="/online-courses" element={<OnlineCourses />} />
-          <Route path="/offline-courses" element={<OfflineCourses />} />
-          <Route path="/course/:mode/:slug" element={<CourseDetail />} />
+          <Route path="/online-courses" element={<CourseListing mode="online" key="online" />} />
+          <Route path="/online-courses/:slug" element={<CourseDetail mode="online" key="online" />} />
+          <Route path="/offline-courses" element={<CourseListing mode="offline" key="offline" />} />
+          <Route path="/offline-courses/:slug" element={<CourseDetail mode="offline" key="offline" />} />
+          <Route path="/course/:mode/:slug" element={<LegacyCourseRedirect />} />
           <Route path="/gallery" element={<GalleryPage />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<BlogPost />} />
@@ -67,8 +72,12 @@ export default function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<RequireAdmin />}>
             <Route element={<AdminLayout />}>
-              <Route index element={<AdminCourses />} />
+              <Route index element={<AdminDashboard />} />
               <Route path="courses" element={<AdminCourses />} />
+              <Route path="courses/new" element={<AdminCourseEditor />} />
+              <Route path="courses/:id" element={<AdminCourseEditor />} />
+              <Route path="batches" element={<AdminBatches />} />
+              <Route path="students" element={<AdminStudents />} />
               <Route path="site-content" element={<AdminSiteContent />} />
               <Route path="home-page" element={<AdminHomePage />} />
               <Route path="gallery" element={<AdminGallery />} />
@@ -83,7 +92,7 @@ export default function App() {
           <Route path="*" element={<Home />} />
         </Routes>
       </main>
-      <Footer />
+      {!isAdmin && <Footer />}
       {!isAdmin && <FloatingContact />}
       {!isAdmin && <CounsellingPopup />}
     </>

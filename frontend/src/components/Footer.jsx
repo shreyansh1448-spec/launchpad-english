@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
+import { MODE_META, coursePath, offersMode, shortTitle } from '../../shared/course.js';
 
 const SOCIAL_ICONS = [
   { key: 'instagram', iconClass: 'fa-instagram', label: 'Instagram' },
@@ -13,9 +14,11 @@ const SOCIAL_ICONS = [
 export default function Footer() {
   const [logoFailed, setLogoFailed] = useState(false);
   const [content, setContent] = useState(null);
+  const [courses, setCourses] = useState([]);
 
   useEffect(() => {
     api.getSiteContent().then(setContent).catch(() => setContent(null));
+    api.getCourses().then(setCourses).catch(() => setCourses([]));
   }, []);
 
   const social = content?.social || {};
@@ -23,7 +26,7 @@ export default function Footer() {
   return (
     <footer className="site-footer">
       <div className="container">
-        <div className="footer-grid">
+        <div className="footer-grid footer-grid-5">
           <div>
             {!logoFailed && (
               <img
@@ -39,20 +42,25 @@ export default function Footer() {
               coaching - online and offline - in South Delhi.
             </p>
           </div>
-          <div>
-            <h4>Courses</h4>
-            <Link to="/online-courses">Basic Spoken English</Link>
-            <Link to="/online-courses">Advanced Spoken English</Link>
-            <Link to="/online-courses">Complete Spoken English</Link>
-            <Link to="/online-courses">IELTS Preparation</Link>
-            <Link to="/online-courses">PTE Preparation</Link>
-          </div>
+          {['online', 'offline'].map((mode) => (
+            <div key={mode}>
+              <h4>
+                <Link to={MODE_META[mode].listingPath}>{MODE_META[mode].listingTitle}</Link>
+              </h4>
+              {courses
+                .filter((c) => offersMode(c, mode))
+                .map((c) => (
+                  <Link key={c.slug} to={coursePath(mode, c.slug)}>
+                    {shortTitle(c.title)}
+                  </Link>
+                ))}
+            </div>
+          ))}
           <div>
             <h4>Quick Links</h4>
             <Link to="/">Home</Link>
             <Link to="/about">About Us</Link>
-            <Link to="/offline-courses">Offline Courses</Link>
-            <Link to="/online-courses">Online Courses</Link>
+            <Link to="/gallery">Gallery</Link>
             <Link to="/counselling">Counselling</Link>
             <Link to="/blog">Blogs</Link>
             <Link to="/faqs">FAQs</Link>

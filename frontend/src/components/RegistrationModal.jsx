@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '../api.js';
 import PriceTag from './PriceTag.jsx';
+import { MODE_META, batchLabel, priceFor, formatPrice, BATCH_STATUS_LABEL } from '../../shared/course.js';
+import { formatDate } from './BatchTimings.jsx';
 
 function loadRazorpayScript() {
   return new Promise((resolve) => {
@@ -14,40 +16,63 @@ function loadRazorpayScript() {
   });
 }
 
-const STEP_MODE = 'mode';
 const STEP_FORM = 'form';
 const STEP_PAYING = 'paying';
 const STEP_SUCCESS = 'success';
 
-// Registration + payment modal.
-// Student first picks Online or Offline (live pricing shown for both), then
-// fills in Fields: name, phone, email, address (no OTP step - Razorpay's own
-// checkout already handles RBI-mandated payment authentication).
-// Payment: creates a Razorpay order on the backend (price pulled live from
-// the course's DB pricing), opens Razorpay Checkout, then verifies the
-// signature server-side before marking the order paid.
-export default function RegistrationModal({ course, mode: fixedMode, onClose }) {
-  const [mode, setMode] = useState(fixedMode || null);
-  const price = mode ? course.pricing[mode] : null;
+// Enrollment + payment modal for ONE course in ONE mode - an online page
+// can only ever start an online enrollment, and vice versa.
+// On open it re-fetches the course so the price and batch list are current;
+// the backend still looks the price up again when creating the Razorpay
+// order, so whatever the browser shows is never trusted for the charge.
+export default function RegistrationModal({ course: initialCourse, mode, initialBatchId, onClose }) {
+  const [course, setCourse] = useState(initialCourse.batches ? initialCourse : null);
+  const [loadError, setLoadError] = useState('');
+  const [batchId, setBatchId] = useState(initialBatchId || '');
 
-  const [step, setStep] = useState(fixedMode ? STEP_FORM : STEP_MODE);
+  const [step, setStep] = useState(STEP_FORM);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
-
   const [error, setError] = useState('');
   const [paidOrder, setPaidOrder] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    api
+      .getCourse(initialCourse.slug)
+      .then((c) => alive && setCourse(c))
+      .catch((err) => alive && setLoadError(err.message));
+    return () => {
+      alive = false;
+    };
+  }, [initialCourse.slug]);
+
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === 'Escape' && step !== STEP_PAYING) onClose();
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, step]);
+
+  const shown = course || initialCourse;
+  const price = priceFor(shown, mode);
+  const batches = (course?.batches || []).filter((b) => b.mode === mode);
+  const bookable = batches.filter((b) => b.bookable);
+  const selectedBatch = bookable.find((b) => b._id === batchId);
 
   async function handlePayNow(e) {
     e.preventDefault();
     setError('');
     if (!/^\d{10}$/.test(phone.replace(/\D/g, '').slice(-10))) return setError('Enter a valid 10-digit phone number');
     if (!name || !email || !address) return setError('Please fill in all fields');
+    if (bookable.length && !selectedBatch) return setError('Please choose a batch timing');
 
     setStep(STEP_PAYING);
     try {
-      const order = await api.createOrder({ courseSlug: course.slug, mode, name, phone, email, address });
+      const order = await api.createOrder({ courseSlug: shown.slug, mode, batchId: selectedBatch?._id, name, phone, email, address });
 
       const ok = await loadRazorpayScript();
       if (!ok) {
@@ -62,9 +87,9 @@ export default function RegistrationModal({ course, mode: fixedMode, onClose }) 
         currency: order.currency,
         order_id: order.razorpayOrderId,
         name: 'Launch Pad English',
-        description: `${order.courseTitle} - ${mode === 'online' ? 'Online' : 'Offline'} Batch`,
+        description: `${order.courseTitle} - ${MODE_META[mode].label}${order.batchLabel ? ` (${order.batchLabel})` : ''}`,
         prefill: { name, email, contact: phone },
-        theme: { color: '#0b2e59' },
+        theme: { color: '#2563EB' },
         handler: async function (response) {
           try {
             const verified = await api.verifyPayment({
@@ -98,50 +123,24 @@ export default function RegistrationModal({ course, mode: fixedMode, onClose }) 
   }
 
   return createPortal(
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={() => step !== STEP_PAYING && onClose()}>
+      <div className="modal enroll-modal" role="dialog" aria-modal="true" aria-label={`Enroll in ${shown.title}`} onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose} aria-label="Close">
           ✕
         </button>
 
-        {step === STEP_MODE ? (
+        {step === STEP_SUCCESS ? (
           <>
-            <h3>Choose Your Batch</h3>
-            <div className="sub">{course.title} - select online or offline to continue</div>
-            <div className="mode-picker">
-              {['online', 'offline'].map((m) => {
-                const p = course.pricing[m];
-                if (!p) return null;
-                return (
-                  <button
-                    type="button"
-                    className="mode-picker-option"
-                    key={m}
-                    onClick={() => {
-                      setMode(m);
-                      setStep(STEP_FORM);
-                    }}
-                  >
-                    <span className="mode-picker-label">{m === 'online' ? '💻 Online' : '🏫 Offline'}</span>
-                    <PriceTag mrp={p.mrp} offer={p.offer} />
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        ) : step === STEP_SUCCESS ? (
-          <>
-            <h3>🎉 Registration Successful!</h3>
+            <h3>🎉 Enrollment Successful!</h3>
             <p className="sub">
-              You're enrolled in <strong>{course.title}</strong> ({mode === 'online' ? 'Online' : 'Offline'}). A
-              confirmation has been sent to {email}.
+              You're enrolled in <strong>{shown.title}</strong> ({MODE_META[mode].label})
+              {paidOrder?.batchLabel ? <> - {paidOrder.batchLabel}</> : null}.
+              {paidOrder?.confirmationSent ? ` A confirmation has been sent to ${email}.` : ' Our team will call you shortly with joining details.'}
             </p>
-            <div className="form-alert success">
-              Payment ID: {paidOrder?.razorpayPaymentId || '—'}
-            </div>
+            <div className="form-alert success">Payment ID: {paidOrder?.razorpayPaymentId || '—'}</div>
             <p className="muted" style={{ fontSize: 13.5 }}>
-              You can now write a verified review for this course from the Home page - just enter this phone
-              number or email when prompted.
+              You can now write a verified review for this course from the Home page - just enter this phone number or
+              email when prompted.
             </p>
             <button className="btn btn-block" onClick={onClose}>
               Done
@@ -149,53 +148,78 @@ export default function RegistrationModal({ course, mode: fixedMode, onClose }) 
           </>
         ) : (
           <>
-            <h3>Register for {course.title}</h3>
-            <div className="sub">
-              {mode === 'online' ? 'Online' : 'Offline'} batch · <PriceTag mrp={price.mrp} offer={price.offer} />
+            <span className={`cc-mode-badge cc-mode-${mode} cc-mode-badge-inline`}>
+              <i className={`fas ${MODE_META[mode].icon}`} /> {MODE_META[mode].label} Course
+            </span>
+            <h3>Enroll: {shown.title}</h3>
+            <div className="enroll-summary">
+              <PriceTag mrp={price.mrp} offer={price.offer} currency={shown.currency} hideOnly />
+              <span className="muted">{shown.duration}</span>
             </div>
 
             <form onSubmit={handlePayNow}>
-              {error && <div className="form-alert error">{error}</div>}
+              {(error || loadError) && <div className="form-alert error">{error || loadError}</div>}
 
-              <div className="form-group">
-                <label>Full Name</label>
-                <input className="form-control" value={name} onChange={(e) => setName(e.target.value)} required />
-              </div>
+              {!course && !loadError && <p className="muted">Loading batch timings…</p>}
+              {course && batches.length > 0 && (
+                <div className="form-group">
+                  <label>Choose Your Batch</label>
+                  <div className="batch-options">
+                    {batches.map((b) => (
+                      <label key={b._id} className={`batch-option ${b.bookable ? '' : 'disabled'} ${batchId === b._id ? 'selected' : ''}`}>
+                        <input
+                          type="radio"
+                          name="batch"
+                          value={b._id}
+                          disabled={!b.bookable}
+                          checked={batchId === b._id}
+                          onChange={() => setBatchId(b._id)}
+                        />
+                        <span className="batch-option-main">{batchLabel(b)}</span>
+                        <span className="batch-option-meta">
+                          {b.startDate && <>Starts {formatDate(b.startDate)} · </>}
+                          {!b.bookable ? BATCH_STATUS_LABEL[b.seatsAvailable === 0 ? 'full' : b.status] : b.seatsAvailable !== null ? `${b.seatsAvailable} seats left` : BATCH_STATUS_LABEL[b.status]}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-              <div className="form-group">
-                <label>Phone Number</label>
-                <input
-                  className="form-control"
-                  type="tel"
-                  placeholder="10-digit mobile number"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                />
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Full Name</label>
+                  <input className="form-control" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required />
+                </div>
+                <div className="form-group">
+                  <label>Phone Number</label>
+                  <input
+                    className="form-control"
+                    type="tel"
+                    placeholder="10-digit mobile number"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    autoComplete="tel"
+                    required
+                  />
+                </div>
               </div>
 
               <div className="form-group">
                 <label>Email Address</label>
-                <input
-                  className="form-control"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-                <p className="form-hint">No OTP required for email.</p>
+                <input className="form-control" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
               </div>
 
               <div className="form-group">
                 <label>Address</label>
-                <textarea className="form-control" value={address} onChange={(e) => setAddress(e.target.value)} required />
+                <textarea className="form-control" rows={2} value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="street-address" required />
               </div>
 
-              <button className="btn btn-block" disabled={step === STEP_PAYING}>
-                {step === STEP_PAYING ? <span className="spinner" /> : `Proceed to Pay ${'₹' + price.offer.toLocaleString('en-IN')}`}
+              <button className="btn btn-block" disabled={step === STEP_PAYING || !course}>
+                {step === STEP_PAYING ? <span className="spinner" /> : `Proceed to Pay ${formatPrice(price.offer, shown.currency)}`}
               </button>
               <p className="form-hint center" style={{ marginTop: 10 }}>
-                Secured by Razorpay
+                <i className="fas fa-lock" /> Secured by Razorpay
               </p>
             </form>
           </>

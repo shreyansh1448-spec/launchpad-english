@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { api } from '../api.js';
 import HeroSlider from '../components/HeroSlider.jsx';
-import CourseCard from '../components/CourseCard.jsx';
+import CourseListingCard from '../components/CourseListingCard.jsx';
 import GoogleMapReviews from '../components/GoogleMapReviews.jsx';
 import ContactCard from '../components/ContactCard.jsx';
 import MapEmbed from '../components/MapEmbed.jsx';
@@ -15,6 +15,7 @@ import YoutubeSection from '../components/YoutubeSection.jsx';
 import SectionImage from '../components/SectionImage.jsx';
 import Reveal from '../components/Reveal.jsx';
 import Stat from '../components/Stat.jsx';
+import { MODE_META, offersMode } from '../../shared/course.js';
 
 // Fallbacks used whenever SiteContent.homeContent doesn't have a section yet
 // (e.g. a fresh install, or before the admin has edited that part) - the
@@ -71,8 +72,18 @@ const DEFAULT_HOME = {
   },
   coursesPreview: {
     eyebrow: 'Our Courses',
-    heading: 'Choose Your Course',
-    text: 'Five specialised programs, available both online and offline.',
+    heading: 'Choose How You Want to Learn',
+    text: 'Every program runs live online and in our South Delhi classroom - each with its own batches and pricing.',
+  },
+  learnOnline: {
+    heading: 'Learn Online',
+    text: 'Build your English skills from anywhere with live online classes.',
+    ctaText: 'Explore Online Courses',
+  },
+  learnOffline: {
+    heading: 'Learn Offline',
+    text: 'Join our classroom programs in South Delhi.',
+    ctaText: 'Explore Offline Courses',
   },
   batchTimingsSection: {
     eyebrow: 'Plan Your Schedule',
@@ -161,12 +172,14 @@ function mergeHome(homeContent) {
 export default function Home() {
   const [courses, setCourses] = useState([]);
   const [content, setContent] = useState(null);
+  const [batches, setBatches] = useState([]);
   const [modalState, setModalState] = useState(null); // { course, mode }
   const location = useLocation();
 
   useEffect(() => {
     api.getCourses().then(setCourses).catch(() => setCourses([]));
     api.getSiteContent().then(setContent).catch(() => setContent(null));
+    api.getBatches().then(setBatches).catch(() => setBatches([]));
   }, []);
 
   useEffect(() => {
@@ -298,31 +311,44 @@ export default function Home() {
         </div>
       </Reveal>
 
-      {/* Courses preview */}
-      <Reveal as="section" className="section section-alt" id="courses">
+      {/* Courses - online and offline kept in separate blocks */}
+      <section className="section section-alt" id="courses">
         <div className="container">
           <div className="section-head">
             <span className="eyebrow">{home.coursesPreview.eyebrow}</span>
             <h2>{home.coursesPreview.heading}</h2>
             <p>{home.coursesPreview.text}</p>
           </div>
-          <div className="grid grid-3">
-            {courses.filter((c) => c.featured).map((c) => (
-              <CourseCard key={c.slug} course={c} onPurchase={(course) => setModalState({ course })} />
-            ))}
-          </div>
-          <div className="center mt-24" style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link className="btn btn-navy" to="/online-courses">
-              View All Online Courses
-            </Link>
-            <Link className="btn" to="/offline-courses">
-              View All Offline Courses
-            </Link>
-          </div>
-        </div>
-      </Reveal>
 
-      {/* Batch Timings - shown once sitewide */}
+          {['online', 'offline'].map((mode) => {
+            const block = mode === 'online' ? home.learnOnline : home.learnOffline;
+            const list = courses.filter((c) => c.featured && offersMode(c, mode));
+            return (
+              <Reveal className={`learn-block learn-block-${mode}`} key={mode} id={`learn-${mode}`}>
+                <div className="learn-block-head">
+                  <div>
+                    <span className={`cc-mode-badge cc-mode-${mode} cc-mode-badge-inline`}>
+                      <i className={`fas ${MODE_META[mode].icon}`} /> {MODE_META[mode].badge}
+                    </span>
+                    <h2>{block.heading}</h2>
+                    <p>{block.text}</p>
+                  </div>
+                  <Link className="btn" to={MODE_META[mode].listingPath}>
+                    {block.ctaText} <i className="fas fa-arrow-right" />
+                  </Link>
+                </div>
+                <div className="cc-grid cc-grid-scroll">
+                  {list.map((c) => (
+                    <CourseListingCard key={c.slug} course={c} mode={mode} compact onEnroll={(course) => setModalState({ course, mode })} />
+                  ))}
+                </div>
+              </Reveal>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Batch Timings - from the batches table */}
       <Reveal as="section" className="section" id="batch-timings">
         <div className="container">
           <div className="section-head">
@@ -330,7 +356,7 @@ export default function Home() {
             <h2>{home.batchTimingsSection.heading}</h2>
             <p>{home.batchTimingsSection.text}</p>
           </div>
-          <BatchTimings timings={content?.batchTimings} />
+          <BatchTimings batches={batches} />
         </div>
       </Reveal>
 
