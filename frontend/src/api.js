@@ -1,3 +1,5 @@
+import { trackLeadConversion } from './lib/ads.js';
+
 // Same-origin: Pages Functions serve /api/* on the same domain as the
 // frontend, so no absolute base URL (and no VITE_API_URL) is needed. Kept
 // overridable for local dev against `wrangler pages dev` on a different port.
@@ -64,7 +66,13 @@ export const api = {
   getReviewByOrder: (orderId) => request(`/reviews/by-order/${orderId}`),
   putReview: (orderId, payload) => request(`/reviews/by-order/${orderId}`, { method: 'PUT', body: JSON.stringify(payload) }),
 
-  submitLead: (payload) => request('/leads', { method: 'POST', body: JSON.stringify(payload) }),
+  // Every lead form (counselling popup, Counselling page, Contact page) goes
+  // through here, so the Google Ads lead conversion fires only on success.
+  submitLead: async (payload) => {
+    const data = await request('/leads', { method: 'POST', body: JSON.stringify(payload) });
+    trackLeadConversion();
+    return data;
+  },
 
   getGallery: (category) => request(`/gallery${category ? `?category=${encodeURIComponent(category)}` : ''}`),
 
